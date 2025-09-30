@@ -1,0 +1,254 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Compiled binary addons
+build/Release
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Vite
+*.local
+
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Supabase
+.supabase/
+supabase/.env
+
+# OS generated files
+Thumbs.db
+</gitignore>
+
+<figma type="code" file="/README.md">
+# GEMSTONE Fine Jewelry - CRM System
+
+A comprehensive jewelry shop CRM system built with React, TypeScript, and Supabase for managing leads, orders, inventory, and customer relationships.
+
+## Features
+
+- **Lead Management**: Track and nurture potential customers with comprehensive lead tracking
+- **Order Management**: Complete order lifecycle management from creation to delivery
+- **Inventory Management**: Track jewelry stock and manage product catalog
+- **WhatsApp & Instagram Integration**: Built-in messaging with automatic lead creation
+- **Notification System**: Birthday, anniversary, and delivery reminders
+- **PDF Invoice Generation**: Professional invoice and report generation
+- **Dealer Management**: Manage jewelry dealers and suppliers
+- **Real-time Notifications**: Stay updated with important events and reminders
+
+## Technology Stack
+
+- **Frontend**: React 18, TypeScript, Tailwind CSS v4
+- **Backend**: Supabase (Authentication, Database, Edge Functions)
+- **UI Components**: Radix UI primitives with shadcn/ui styling
+- **Icons**: Lucide React
+- **PDF Generation**: jsPDF
+- **Charts**: Recharts
+- **Form Handling**: React Hook Form
+- **Animations**: Motion (Framer Motion)
+- **Build Tool**: Vite
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 16+ and npm 8+
+- A Supabase account and project
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd gemstone-fine-jewelry-crm
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   Create a `.env.local` file in the root directory:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Set up the database**
+   - Navigate to your Supabase project dashboard
+   - Run the SQL commands from `/supabase/functions/server/database-setup.sql`
+   - Or use the built-in Database Setup component in the application
+
+5. **Deploy Supabase Edge Function (Optional)**
+   ```bash
+   supabase functions deploy server
+   ```
+
+6. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+The application will be available at `http://localhost:3000`
+
+## Project Structure
+
+```
+├── App.tsx                 # Main application component
+├── components/             # React components
+│   ├── ui/                # shadcn/ui components
+│   ├── figma/             # Figma integration components
+│   └── ...                # Feature components
+├── utils/                 # Utility functions
+│   ├── supabase/          # Supabase client and API
+│   └── pdf/               # PDF generation utilities
+├── styles/                # Global styles and Tailwind configuration
+├── supabase/              # Supabase edge functions
+└── ...
+```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript type checking
+
+## Key Features
+
+### Authentication System
+- Email/password authentication with Supabase
+- Profile management
+- Secure session handling
+
+### Lead Management
+- Comprehensive lead tracking
+- WhatsApp and Instagram integration
+- Lead conversion to orders
+- Birthday and anniversary tracking
+
+### Order Management
+- Complete order lifecycle tracking
+- PDF invoice generation
+- WhatsApp order updates
+- Payment tracking
+
+### Messaging Integration
+- WhatsApp business integration
+- Instagram direct messaging
+- Automatic lead creation from messages
+
+### Notification System
+- Birthday and anniversary reminders
+- Delivery notifications
+- High-priority alerts
+- WhatsApp integration for notifications
+
+## Environment Configuration
+
+The application requires the following environment variables:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+## Database Setup
+
+The application uses Supabase with custom tables. Use the Database Setup component in the application or manually run the SQL from `/supabase/functions/server/database-setup.sql`.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Support
+
+For support and questions, please contact the GEMSTONE Fine Jewelry team.

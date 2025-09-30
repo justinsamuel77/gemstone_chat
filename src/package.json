@@ -1,0 +1,67 @@
+{
+  "name": "gemstone-crm",
+  "version": "1.0.0",
+  "description": "GEMSTONE Fine Jewelry CRM System",
+  "type": "module",
+  "main": "main.tsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit",
+    "server": "node server/index.js",
+    "server:dev": "nodemon server/index.js",
+    "start:all": "concurrently \"npm run dev\" \"npm run server:dev\"",
+    "start": "npm run dev",
+    "check-setup": "node scripts/check-setup.js",
+    "test-server": "node scripts/test-server.js",
+    "setup": "npm run check-setup && npm install"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.12.2",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.0.0",
+    "dotenv": "^17.2.2",
+    "hono": "^4.0.0",
+    "motion": "^10.16.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.55.0",
+    "recharts": "^2.10.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.0.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "nodemon": "^3.0.0",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^4.0.0-alpha.4",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "crm",
+    "jewelry",
+    "management",
+    "react",
+    "typescript"
+  ],
+  "author": "GEMSTONE Fine Jewelry",
+  "license": "MIT"
+}
