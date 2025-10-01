@@ -1427,6 +1427,10 @@ app.post('/webhook', async (c) => {
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const messages = value?.messages;
+      const contact = value?.contacts?.[0];
+      const sender_name = contact?.profile?.name;
+      
+      console.log('name is',sender_name)
 
       if (messages && messages.length > 0) {
         const message = messages[0];
@@ -1473,7 +1477,7 @@ app.post('/webhook', async (c) => {
           // Step 3: Insert new row
           console.log('record not exist')
           const insertPayload = {
-            recipient_name: 'Naveen',
+            recipient_name: sender_name,
             recipient_number: from,
             message_history: [newMessage]
           };
