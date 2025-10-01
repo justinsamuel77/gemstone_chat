@@ -622,10 +622,10 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
           </div>
         );
 
-      case 'inventory':
-        return (
-          <InventoryList />
-        );
+      // case 'inventory':
+      //   return (
+      //     <InventoryList />
+      //   );
 
       case 'add-inventory':
         return (
