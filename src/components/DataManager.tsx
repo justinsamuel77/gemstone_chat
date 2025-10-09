@@ -164,7 +164,7 @@ interface DataManagerContextType {
   createInventoryTransaction: (transactionData: any) => Promise<InventoryTransaction | null>;
 
   //Whatsapp opeartions
-  sendWhatsappMessage: (message: any) => Promise<Message | boolean| null>;
+  sendWhatsappMessage: (message: any) => Promise<Message | boolean| null | any>;
 }
 
 const DataManagerContext = createContext<DataManagerContextType | null>(null);
@@ -928,14 +928,13 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     }
   }, []);
 
-  const sendWhatsappMessage = useCallback(async (message: any): Promise<boolean | null> => {
+  const sendWhatsappMessage = useCallback(async (message: any): Promise<boolean | null | any> => {
     console.log('🔄 Sending messagfe:', message);
     
     try {
-      const response = await apiService.sentWhatsappMessages(message);
-      
+      const response = await apiService.sentWhatsappMessages(message);     
       if (response.success ) {   
-        return true;
+        return response;
       } else {
         console.error('❌ Failed to Send message:', response.error);
         setError(response.error || 'Failed to Send message');

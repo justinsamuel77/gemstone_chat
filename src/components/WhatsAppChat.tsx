@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -21,7 +21,8 @@ import {
   Trash2,
   Check,
   CheckCheck,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ interface Contact {
     time: string;
     type: string;
     message: string;
+    images:string [] | undefined;
   } []
 }
 
@@ -63,12 +65,21 @@ interface WhatsAppChatProps {
 }
 
 export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps) {
+   const fileInputRef = useRef(null);
+
+  const handleFileClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const BASE_URL='https://gemstone-chat.onrender.com/api'
+  const [images, set_images] = useState<string[]>([]);
   const { whatappmessage,sendWhatsappMessage,isLoading } = useDataManager();
   console.log('Whatsapp messages' , whatappmessage)
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [reply_message, setreplyMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [loading,setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -267,18 +278,31 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+
  const handleSendMessage = async ({ phone_no }: { phone_no: string}) => {
-      if (!reply_message.trim() || !selectedContact) return;
+      if (!reply_message.trim() || !selectedContact ) return;
+      setLoading(true)
+      const imagesBase64 = await Promise.all(
+        images.map(async (url) => {
+          const blob = await fetch(url).then((res) => res.blob());
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          return base64; 
+        })
+      );
       try {
         const Message = {
            phone_no,
-           message:reply_message
+           message:reply_message,
+           images:imagesBase64
         };
   
         const result = await sendWhatsappMessage(Message);
         
-        if (result) {
-           console.log('success')
+        if (result.success) {
            setSelectedContact((preVal) => {
         if (!preVal) return preVal;
 
@@ -289,6 +313,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
         updatedHistory.push({
           type:"Sent",
           message: reply_message,
+          images:result.data.savedPaths,
           time: new Date().toISOString()
         });
 
@@ -298,6 +323,8 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
         };
       });
       setreplyMessage("")
+      set_images([])
+      setLoading(false)
     }
       } catch (error) {
         console.error('Error sending message', error);
@@ -367,6 +394,27 @@ const formatLastSeen = (isoString: string): string => {
     contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     contact.phone.includes(searchTerm)
   );
+
+  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newImages = Array.from(e.target.files).map((file) =>
+        URL.createObjectURL(file)
+      );
+
+      set_images((prevImages) => [...prevImages,...newImages]);
+    }
+  };
+
+    const handleRemoveImage = (imageUrl: string) => {
+ 
+      set_images((prevImages) =>
+        prevImages.filter((image) => image !== imageUrl)
+      );
+      
+      URL.revokeObjectURL(imageUrl);
+  };
+
+  console.log('images are',images)
 
   return (
     <div className="h-screen flex bg-[#f0f2f5]">
@@ -474,7 +522,7 @@ const formatLastSeen = (isoString: string): string => {
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={selectedContact.avatar} />
+                      <AvatarImage src={selectedContact?.avatar} />
                       <AvatarFallback className="bg-[#00a884] text-white">
                         {getInitials(selectedContact.recipient_name)}
                       </AvatarFallback>
@@ -544,6 +592,18 @@ const formatLastSeen = (isoString: string): string => {
                           : 'bg-[#d9fdd3] text-gray-900'
                       }`}
                     >
+                      {msg.images && msg.images.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                          {msg.images.map((img, i) => (
+                            <img
+                              key={i}
+                              src={`${BASE_URL}${img}`}
+                              alt={`attachment-${i}`}
+                              className="w-24 h-24 object-cover rounded-md border"
+                            />
+                          ))}
+                        </div>
+                      )}
                       <p className="text-sm">{msg.message}</p>
                       <div className="flex items-center gap-1 mt-1 justify-end">
                         <span className="text-xs text-gray-500">
@@ -554,6 +614,27 @@ const formatLastSeen = (isoString: string): string => {
                     </div>
                   </div>
                 ))}
+
+              {(images && images.length > 0) && (
+                <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative flex-shrink-0">
+                      <img
+                        src={image}
+                        alt={`Uploaded ${index}`}
+                        className="w-24 h-24 object-center rounded-md border p-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(image)}
+                        className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full text-sm w-6 h-6 flex justify-center items-center shadow-md"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
                 
                 {/* Typing Indicator */}
                 {isTyping && (
@@ -585,9 +666,19 @@ const formatLastSeen = (isoString: string): string => {
                 >
                   <Smile className="w-5 h-5" />
                 </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".png,.jpg"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+
+                {/* Button that triggers file input */}
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={handleFileClick}
                   className="text-gray-600 hover:bg-gray-200 p-2 h-auto"
                 >
                   <Paperclip className="w-5 h-5" />
@@ -603,8 +694,9 @@ const formatLastSeen = (isoString: string): string => {
                 </div>
                 {reply_message.trim() ? (
                   <Button
+                    disabled={loading}
                     onClick={()=>handleSendMessage({phone_no:String(selectedContact.recipient_number)})}
-                    className="bg-[#00a884] hover:bg-[#008f72] text-white rounded-full p-2 h-auto w-auto"
+                    className="disabled:opacity-45 disabled:cursor-not-allowed bg-[#00a884] hover:bg-[#008f72] text-white rounded-full p-2 h-auto w-auto border border-black"
                   >
                     <Send className="w-5 h-5" />
                   </Button>

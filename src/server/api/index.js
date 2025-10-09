@@ -1417,63 +1417,103 @@ app.get('/api/whatsapp', async (c) => {
 });
 
 app.post('/webhook', async (c) => {
-  console.log('api called');
+  console.log('Webhook called');
   try {
     const body = await c.req.json();
-    // console.log('Webhook POST body:', JSON.stringify(body, null, 2));
 
     if (body.object) {
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const messages = value?.messages;
+      const contact = value?.contacts?.[0];
+      const sender_name = contact?.profile?.name;
+
+      console.log('Sender name:', sender_name);
 
       if (messages && messages.length > 0) {
         const message = messages[0];
         const from = message.from; 
-        const text = message.text?.body;
+        const messageType = message.type;
 
-        console.log(`Received message from ${from}: ${text}`);
+        const newMessage = {
+          type: 'Received',
+          message: '',
+          images: [],
+          time: new Date().toISOString()
+        };
 
-        // Step 1: Get existing record if it exists
+        // ✅ Handle text messages
+        if (messageType === 'text') {
+          newMessage.message = message.text?.body || '';
+        }
+
+        // ✅ Handle image messages
+        if (messageType === 'image') {
+          // WhatsApp webhook gives you an ID, you need to fetch the actual media
+          const mediaId = message.image?.id;
+          if (mediaId) {
+            try {
+              // 1. Get media URL from WhatsApp
+              const mediaRes = await axios.get(
+                `https://graph.facebook.com/v22.0/${mediaId}`,
+                {
+                  headers: { Authorization: `Bearer ${process.env.META_TOKEN}` },
+                  responseType: 'json'
+                }
+              );
+
+              const mediaUrl = mediaRes.data.url; // URL to download image
+
+              // 2. Download the image
+              const imageResp = await axios.get(mediaUrl, {
+                headers: { Authorization: `Bearer ${process.env.META_TOKEN}` },
+                responseType: 'arraybuffer'
+              });
+
+              // 3. Save image locally
+              const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
+              if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+              const fileName = `img_${Date.now()}.jpg`;
+              const filePath = path.join(uploadDir, fileName);
+              fs.writeFileSync(filePath, Buffer.from(imageResp.data));
+
+              newMessage.images.push(`/whatsapp_images/${fileName}`);
+            } catch (imgErr) {
+              console.error('❌ Failed to download/save image:', imgErr);
+            }
+          }
+        }
+
+        // Step 1: Fetch existing record
         const { data: existing, error: fetchError } = await supabase
           .from('whatsapp')
           .select('id, message_history')
           .eq('recipient_number', from)
           .single();
 
-        const newMessage = {
-          type: 'Received',
-          message: text,
-          time: new Date().toISOString()
-        };
-
         if (fetchError && fetchError.code !== 'PGRST116') {
           console.error('❌ Fetch error:', fetchError);
-          return c.json({ error: 'Failed to fetch existing record' }, 500);
+          return c.json({ success: false, error: 'Failed to fetch existing record' }, 500);
         }
 
         if (existing) {
-          // Step 2: Append to existing message history
+          // Append to message history
           const updatedMessages = [...existing.message_history, newMessage];
-
           const { error: updateError } = await supabase
             .from('whatsapp')
-            .update({
-              message_history: updatedMessages,
-              // updated_at: new Date().toISOString()
-            })
+            .update({ message_history: updatedMessages })
             .eq('id', existing.id);
 
           if (updateError) {
             console.error('❌ Update error:', updateError);
-            return c.json({ error: 'Failed to update message history' }, 500);
+            return c.json({ success: false, error: 'Failed to update message history' }, 500);
           }
         } else {
-          // Step 3: Insert new row
-          console.log('record not exist')
+          // Insert new record
           const insertPayload = {
-            recipient_name: from,
+            recipient_name: sender_name,
             recipient_number: from,
             message_history: [newMessage]
           };
@@ -1484,113 +1524,160 @@ app.post('/webhook', async (c) => {
 
           if (insertError) {
             console.error('❌ Insert error:', insertError);
-            return c.json({ error: 'Failed to insert new message record' }, 500);
+            return c.json({ success: false, error: 'Failed to insert new message record' }, 500);
           }
         }
 
-        return c.json({ success: true });
+        return c.json({ success: true, savedImages: newMessage.images });
       }
     }
 
-    return c.json({ error: 'Invalid webhook payload' }, 400);
+    return c.json({ success: false, error: 'Invalid webhook payload' }, 400);
   } catch (err) {
     console.error('Webhook POST error:', err);
-    return c.json({ error: 'Webhook handler error' }, 500);
+    return c.json({ success: false, error: 'Webhook handler error' }, 500);
   }
 });
 
-app.post('/api/sendwhatsappMessage', async (c) => {
+import fs from "fs";
+import path from "path";
+import FormData from "form-data";
+
+app.post("/api/sendwhatsappMessage", async (c) => {
   try {
     const user = await verifyAuth(c.req.raw);
-    if (!user) {
-      return c.json({ error: 'Unauthorized' }, 401);
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const body = await c.req.json();
+    const { name, phone_no, message, images = [] } = body;
+
+    console.log("Phone no:", phone_no);
+    console.log("Images:", images.length);
+
+    const textRes = await axios.post(
+      "https://graph.facebook.com/v22.0/782872091578144/messages",
+      {
+        messaging_product: "whatsapp",
+        to: phone_no,
+        type: "text",
+        text: { body: message },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.META_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Text message sent:", textRes.data);
+
+    const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const savedPaths = [];
+    for (let i = 0; i < images.length; i++) {
+      const base64Data = images[i].split(",")[1];
+      const fileName = `img_${Date.now()}_${i}.png`;
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+      savedPaths.push(`/whatsapp_images/${fileName}`);
     }
 
-    const body = await c.req.json()
-    const { name, phone_no,message } = body
+    for (const imgPath of savedPaths) {
+      const filePath = path.join(process.cwd(), "..", "public", imgPath);
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(filePath));
+      formData.append("type", "image/png");
+      formData.append("messaging_product", "whatsapp");
 
-    console.log('Phone no is', phone_no)
-    console.log('sendMessage is called')
-
-    const response = await axios({
-      url: 'https://graph.facebook.com/v22.0/782872091578144/messages',
-      method: 'post',
-      headers: {
-        'Authorization': `Bearer ${process.env.META_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      data: {
-        messaging_product: 'whatsapp',
-        to: phone_no,
-        type: 'text',
-        text: {
-          body: `${message}`
+      const uploadRes = await axios.post(
+        "https://graph.facebook.com/v22.0/782872091578144/media",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.META_TOKEN}`,
+            ...formData.getHeaders(),
+          },
         }
+      );
+
+      const mediaId = uploadRes.data.id;
+
+      // Send image message using the uploaded media ID
+      await axios.post(
+        "https://graph.facebook.com/v22.0/782872091578144/messages",
+        {
+          messaging_product: "whatsapp",
+          to: phone_no,
+          type: "image",
+          image: { id: mediaId },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.META_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("Image message sent:", mediaId);
+    }
+
+    const newMessage = {
+      type: "Sent",
+      message,
+      time: new Date().toISOString(),
+      images: savedPaths,
+    };
+
+    const { data: existing, error: fetchError } = await supabase
+      .from("whatsapp")
+      .select("id, message_history")
+      .eq("recipient_number", phone_no)
+      .single();
+
+    if (fetchError && fetchError.code !== "PGRST116") {
+      console.error("❌ Fetch error:", fetchError);
+      return c.json({ error: "Failed to fetch existing record" }, 500);
+    }
+
+    if (existing) {
+      const updatedMessages = [...existing.message_history, newMessage];
+      const { error: updateError } = await supabase
+        .from("whatsapp")
+        .update({ message_history: updatedMessages })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("❌ Update error:", updateError);
+        return c.json({ error: "Failed to update message history" }, 500);
       }
-    })
-    console.log(response, 'response')
-    // Step 1: Get existing record if it exists
-        const { data: existing, error: fetchError } = await supabase
-          .from('whatsapp')
-          .select('id, message_history')
-          .eq('recipient_number', phone_no)
-          .single();
+    } else {
+      const insertPayload = {
+        recipient_name: name,
+        recipient_number: phone_no,
+        message_history: [newMessage],
+      };
 
-        const newMessage = {
-          type: 'Sent',
-          message: message,
-          time: new Date().toISOString()
-        };
+      const { error: insertError } = await supabase
+        .from("whatsapp")
+        .insert([insertPayload]);
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error('❌ Fetch error:', fetchError);
-          return c.json({ error: 'Failed to fetch existing record' }, 500);
-        }
+      if (insertError) {
+        console.error("❌ Insert error:", insertError);
+        return c.json({ error: "Failed to insert new message record" }, 500);
+      }
+    }
 
-        if (existing) {
-          // Step 2: Append to existing message history
-          const updatedMessages = [...existing.message_history, newMessage];
-
-          const { error: updateError } = await supabase
-            .from('whatsapp')
-            .update({
-              message_history: updatedMessages,
-              // updated_at: new Date().toISOString()
-            })
-            .eq('id', existing.id);
-
-          if (updateError) {
-            console.error('❌ Update error:', updateError);
-            return c.json({ error: 'Failed to update message history' }, 500);
-          }
-        } 
-        // else {
-        //   // Step 3: Insert new row
-        //   console.log('record not exist')
-        //   const insertPayload = {
-        //     recipient_name: 'Naveen',
-        //     recipient_number: phone_no,
-        //     message_history: [newMessage]
-        //   };
-
-        //   const { error: insertError } = await supabase
-        //     .from('whatsapp')
-        //     .insert([insertPayload]);
-
-        //   if (insertError) {
-        //     console.error('❌ Insert error:', insertError);
-        //     return c.json({ error: 'Failed to insert new message record' }, 500);
-        //   }
-        // }
-
-    console.log('Message sent:', response.data)
-
-    return c.json({ success: true }, 200)
+    return c.json({ success: true, savedPaths }, 200);
   } catch (err) {
-    console.error('Error sending message:', err?.response?.data || err.message)
-    return c.json({ success: false, error: 'Failed to send message' }, 500)
+    console.error("❌ Error sending message:", err?.response?.data || err.message);
+    return c.json({ success: false, error: "Failed to send message" }, 500);
   }
-})
+});
+
+
 
 
 // Health check
