@@ -22,7 +22,8 @@ import {
   Check,
   CheckCheck,
   Clock,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -35,14 +36,14 @@ import { useDataManager } from './DataManager';
 
 interface Contact {
   id: string;
-  recipient_name:string;
-  recipient_number:number;
-  message_history:{
+  recipient_name: string;
+  recipient_number: number;
+  message_history: {
     time: string;
     type: string;
     message: string;
-    images:string [] | undefined;
-  } []
+    images: string[] | undefined;
+  }[]
 }
 
 interface Message {
@@ -65,21 +66,21 @@ interface WhatsAppChatProps {
 }
 
 export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps) {
-   const fileInputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleFileClick = () => {
     fileInputRef.current?.click();
   };
 
-  const BASE_URL='https://gemstone-chat.onrender.com/api'
+  const BASE_URL = 'https://gemstone-chat.onrender.com/api'
   const [images, set_images] = useState<string[]>([]);
-  const { whatappmessage,sendWhatsappMessage,isLoading } = useDataManager();
-  console.log('Whatsapp messages' , whatappmessage)
+  const { whatappmessage, sendWhatsappMessage, isLoading } = useDataManager();
+  console.log('Whatsapp messages', whatappmessage)
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [reply_message, setreplyMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [loading,setLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -146,7 +147,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
   //   if (selectedContactInfo) {
   //     // Check if the contact already exists in the list
   //     const existingContact = contacts.find(c => c.id === selectedContactInfo.id || c.phone === selectedContactInfo.phone);
-      
+
   //     if (existingContact) {
   //       setSelectedContact(existingContact);
   //     } else {
@@ -220,8 +221,10 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+    }
+  }, [messages, selectedContact?.message_history]);
 
   // const handleSendMessage = () => {
   //   if (!message.trim() || !selectedContact) return;
@@ -279,101 +282,100 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
   };
 
 
- const handleSendMessage = async ({ phone_no }: { phone_no: string}) => {
-      if (!reply_message.trim() || !selectedContact ) return;
-      setLoading(true)
-      const imagesBase64 = await Promise.all(
-        images.map(async (url) => {
-          const blob = await fetch(url).then((res) => res.blob());
-          const base64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-          return base64; 
-        })
-      );
-      try {
-        const Message = {
-           phone_no,
-           message:reply_message,
-           images:imagesBase64
-        };
-  
-        const result = await sendWhatsappMessage(Message);
-        
-        if (result.success) {
-           setSelectedContact((preVal) => {
-        if (!preVal) return preVal;
-
-        const updatedHistory = Array.isArray(preVal.message_history)
-          ? [...preVal.message_history]
-          : [];
-
-        updatedHistory.push({
-          type:"Sent",
-          message: reply_message,
-          images:result.data.savedPaths,
-          time: new Date().toISOString()
+  const handleSendMessage = async ({ phone_no }: { phone_no: string }) => {
+    if (!reply_message.trim() || !selectedContact) return;
+    setLoading(true)
+    const imagesBase64 = await Promise.all(
+      images.map(async (url) => {
+        const blob = await fetch(url).then((res) => res.blob());
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
         });
+        return base64;
+      })
+    );
+    try {
+      const Message = {
+        phone_no,
+        message: reply_message,
+        images: imagesBase64
+      };
 
-        return {
-          ...preVal,
-          message_history: updatedHistory
-        };
-      });
-      setreplyMessage("")
-      set_images([])
-      setLoading(false)
-    }
-      } catch (error) {
-        console.error('Error sending message', error);
+      const result = await sendWhatsappMessage(Message);
 
+      if (result.success) {
+        setSelectedContact((preVal) => {
+          if (!preVal) return preVal;
+
+          const updatedHistory = Array.isArray(preVal.message_history)
+            ? [...preVal.message_history]
+            : [];
+
+          updatedHistory.push({
+            type: "Sent",
+            message: reply_message,
+            images: result.data.savedPaths,
+            time: new Date().toISOString()
+          });
+
+          return {
+            ...preVal,
+            message_history: updatedHistory
+          };
+        });
+        setreplyMessage("")
+        set_images([])
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Error sending message', error);
     };
- }
+  }
 
- const formatTime = (isoString: string): string => {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: false 
-  });
-};
-
-const formatLastSeen = (isoString: string): string => {
-  const timestamp = new Date(isoString);
-  const now = new Date();
-
-  const isSameDay = (d1: Date, d2: Date) =>
-    d1.getDate() === d2.getDate() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getFullYear() === d2.getFullYear();
-
-  const isYesterday = (d: Date, reference: Date) => {
-    const yesterday = new Date(reference);
-    yesterday.setDate(reference.getDate() - 1);
-    return isSameDay(d, yesterday);
+  const formatTime = (isoString: string): string => {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   };
 
-  const diff = now.getTime() - timestamp.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
+  const formatLastSeen = (isoString: string): string => {
+    const timestamp = new Date(isoString);
+    const now = new Date();
 
-  if (isSameDay(timestamp, now)) {
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    return `${hours}h ago`;
-  }
+    const isSameDay = (d1: Date, d2: Date) =>
+      d1.getDate() === d2.getDate() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getFullYear() === d2.getFullYear();
 
-  if (isYesterday(timestamp, now)) {
-    return 'Yesterday';
-  }
+    const isYesterday = (d: Date, reference: Date) => {
+      const yesterday = new Date(reference);
+      yesterday.setDate(reference.getDate() - 1);
+      return isSameDay(d, yesterday);
+    };
 
-  const day = timestamp.getDate().toString().padStart(2, '0');
-  const month = (timestamp.getMonth() + 1).toString().padStart(2, '0');
-  return `${day}/${month}`;
-};
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+
+    if (isSameDay(timestamp, now)) {
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      return `${hours}h ago`;
+    }
+
+    if (isYesterday(timestamp, now)) {
+      return 'Yesterday';
+    }
+
+    const day = timestamp.getDate().toString().padStart(2, '0');
+    const month = (timestamp.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}/${month}`;
+  };
 
   const getMessageStatusIcon = (status: string) => {
     switch (status) {
@@ -401,20 +403,18 @@ const formatLastSeen = (isoString: string): string => {
         URL.createObjectURL(file)
       );
 
-      set_images((prevImages) => [...prevImages,...newImages]);
+      set_images((prevImages) => [...prevImages, ...newImages]);
     }
   };
 
-    const handleRemoveImage = (imageUrl: string) => {
- 
-      set_images((prevImages) =>
-        prevImages.filter((image) => image !== imageUrl)
-      );
-      
-      URL.revokeObjectURL(imageUrl);
+  const handleRemoveImage = (imageUrl: string) => {
+    set_images((prevImages) =>
+      prevImages.filter((image) => image !== imageUrl)
+    );
+    URL.revokeObjectURL(imageUrl);
   };
 
-  console.log('images are',images)
+  console.log('images are', images)
 
   return (
     <div className="h-screen flex bg-[#f0f2f5]">
@@ -471,9 +471,8 @@ const formatLastSeen = (isoString: string): string => {
               <div
                 key={contact.id}
                 onClick={() => setSelectedContact(contact)}
-                className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedContact?.id === contact.id ? 'bg-[#f0f2f5]' : ''
-                }`}
+                className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${selectedContact?.id === contact.id ? 'bg-[#f0f2f5]' : ''
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -491,12 +490,12 @@ const formatLastSeen = (isoString: string): string => {
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium text-gray-900 truncate">{contact.recipient_number}</h3>
                       <span className="text-xs text-gray-500">
-                        {formatLastSeen(contact.message_history[contact.message_history.length -1].time)}
+                        {formatLastSeen(contact.message_history[contact.message_history.length - 1].time)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-gray-600 text-sm truncate">
-                        {contact.message_history[contact.message_history.length -1].message}
+                        {contact.message_history[contact.message_history.length - 1].message}
                       </p>
                       {/* {contact.unreadCount > 0 && (
                         <Badge className="bg-[#00a884] text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center">
@@ -539,16 +538,16 @@ const formatLastSeen = (isoString: string): string => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-200 p-2 h-auto">
+                  {/* <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-200 p-2 h-auto">
                     <Video className="w-5 h-5" />
                   </Button>
                   <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-200 p-2 h-auto">
                     <Phone className="w-5 h-5" />
-                  </Button>
+                  </Button> */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-200 p-2 h-auto">
-                        <MoreVertical className="w-5 h-5" />
+                        {/* <MoreVertical className="w-5 h-5" /> */}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -572,7 +571,7 @@ const formatLastSeen = (isoString: string): string => {
             </div>
 
             {/* Messages Area */}
-            <div 
+            <div
               className="flex-1 p-4 overflow-y-auto"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e5ddd5' fill-opacity='0.05' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='1'/%3E%3C/g%3E%3C/svg%3E")`,
@@ -580,17 +579,16 @@ const formatLastSeen = (isoString: string): string => {
               }}
             >
               <div className="space-y-4">
-                {selectedContact.message_history.map((msg,index) => (
+                {selectedContact?.message_history?.map((msg, index) => (
                   <div
                     key={index}
-                    className={`flex ${msg.type=== "Received" ? 'justify-start' : 'justify-end'}`}
+                    className={`flex ${msg.type === "Received" ? 'justify-start' : 'justify-end'}`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${
-                        msg.type=== "Received"
-                          ? 'bg-white text-gray-900'
-                          : 'bg-[#d9fdd3] text-gray-900'
-                      }`}
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${msg.type === "Received"
+                        ? 'bg-white text-gray-900'
+                        : 'bg-[#d9fdd3] text-gray-900'
+                        }`}
                     >
                       {msg.images && msg.images.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mt-2">
@@ -607,7 +605,7 @@ const formatLastSeen = (isoString: string): string => {
                       <p className="text-sm">{msg.message}</p>
                       <div className="flex items-center gap-1 mt-1 justify-end">
                         <span className="text-xs text-gray-500">
-                          {formatTime(msg.time)}
+                          {formatLastSeen(msg.time)}
                         </span>
                         {/* {msg.type=== "Received" && getMessageStatusIcon(msg.status)} */}
                       </div>
@@ -615,27 +613,27 @@ const formatLastSeen = (isoString: string): string => {
                   </div>
                 ))}
 
-              {(images && images.length > 0) && (
-                <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative flex-shrink-0">
-                      <img
-                        src={image}
-                        alt={`Uploaded ${index}`}
-                        className="w-24 h-24 object-center rounded-md border p-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(image)}
-                        className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full text-sm w-6 h-6 flex justify-center items-center shadow-md"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-                
+                {(images && images.length > 0) && (
+                  <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
+                    {images.map((image, index) => (
+                      <div key={index} className="relative flex-shrink-0">
+                        <img
+                          src={image}
+                          alt={`Uploaded ${index}`}
+                          className="w-24 h-24 object-center rounded-md border p-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(image)}
+                          className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full text-sm w-6 h-6 flex justify-center items-center shadow-md"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Typing Indicator */}
                 {isTyping && (
                   <div className="flex justify-start">
@@ -651,21 +649,22 @@ const formatLastSeen = (isoString: string): string => {
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
             <div className="p-4 bg-[#f0f2f5] border-t border-gray-200">
               <div className="flex items-center gap-2">
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   className="text-gray-600 hover:bg-gray-200 p-2 h-auto"
                 >
                   <Smile className="w-5 h-5" />
-                </Button>
+                </Button> */}
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -688,27 +687,32 @@ const formatLastSeen = (isoString: string): string => {
                     placeholder="Type a message"
                     value={reply_message}
                     onChange={(e) => setreplyMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage({phone_no:String(selectedContact.recipient_number)})}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage({ phone_no: String(selectedContact.recipient_number) })}
                     className="pr-12 rounded-full border-gray-300 bg-white"
                   />
                 </div>
-                {reply_message.trim() ? (
+                {reply_message.trim() &&
                   <Button
                     disabled={loading}
-                    onClick={()=>handleSendMessage({phone_no:String(selectedContact.recipient_number)})}
+                    onClick={() => handleSendMessage({ phone_no: String(selectedContact.recipient_number) })}
                     className="disabled:opacity-45 disabled:cursor-not-allowed bg-[#00a884] hover:bg-[#008f72] text-white rounded-full p-2 h-auto w-auto border border-black"
                   >
-                    <Send className="w-5 h-5" />
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
                   </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-600 hover:bg-gray-200 p-2 h-auto"
-                  >
-                    <Mic className="w-5 h-5" />
-                  </Button>
-                )}
+
+
+                  // <Button
+                  //   variant="ghost"
+                  //   size="sm"
+                  //   className="text-gray-600 hover:bg-gray-200 p-2 h-auto"
+                  // >
+                  //   <Mic className="w-5 h-5" />
+                  // </Button>
+                }
               </div>
             </div>
           </>
