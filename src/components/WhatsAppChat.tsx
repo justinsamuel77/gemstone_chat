@@ -100,7 +100,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     imagesOverride?: string[]; // optional image data if passed directly
   }) => {
     if ((!reply_message.trim() && !imagesOverride?.length) || !selectedContact) return;
-    setLoading(true);
+      setLoading(true);
 
     const imagesToSend = imagesOverride
       ? imagesOverride
@@ -151,7 +151,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
         set_images([]);
       }
     } catch (error) {
-      console.error("Error sending message", error);
+      console.error("Error sending message:", error);
     } finally {
       setLoading(false);
     }
@@ -460,6 +460,11 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
                         >
                           <X className="w-3 h-3" />
                         </button>
+                        {loading && (
+                          <div className="absolute inset-0 bg-black/40 flex justify-center items-center rounded-md">
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
