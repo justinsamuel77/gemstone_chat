@@ -120,6 +120,7 @@ interface Whatsapp {
 interface Message {
   phone_no:number;
   message:string;
+  images: string[];
 }
 
 

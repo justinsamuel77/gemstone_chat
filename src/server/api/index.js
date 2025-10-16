@@ -1554,64 +1554,14 @@ app.post("/api/sendwhatsappMessage", async (c) => {
     console.log("Phone no:", phone_no);
     console.log("Images:", images.length);
 
-    const textRes = await axios.post(
-      "https://graph.facebook.com/v22.0/782872091578144/messages",
-      {
-        messaging_product: "whatsapp",
-        to: phone_no,
-        type: "text",
-        text: { body: message },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.META_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    console.log("Text message sent:", textRes.data);
-
-    const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-    const savedPaths = [];
-    for (let i = 0; i < images.length; i++) {
-      const base64Data = images[i].split(",")[1];
-      const fileName = `img_${Date.now()}_${i}.png`;
-      const filePath = path.join(uploadDir, fileName);
-      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-      savedPaths.push(`/whatsapp_images/${fileName}`);
-    }
-
-    for (const imgPath of savedPaths) {
-      const filePath = path.join(process.cwd(), "..", "public", imgPath);
-      const formData = new FormData();
-      formData.append("file", fs.createReadStream(filePath));
-      formData.append("type", "image/png");
-      formData.append("messaging_product", "whatsapp");
-
-      const uploadRes = await axios.post(
-        "https://graph.facebook.com/v22.0/782872091578144/media",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.META_TOKEN}`,
-            ...formData.getHeaders(),
-          },
-        }
-      );
-
-      const mediaId = uploadRes.data.id;
-
-      // Send image message using the uploaded media ID
-      await axios.post(
+    if (message && message.trim() !== "") {
+      const textRes = await axios.post(
         "https://graph.facebook.com/v22.0/782872091578144/messages",
         {
           messaging_product: "whatsapp",
           to: phone_no,
-          type: "image",
-          image: { id: mediaId },
+          type: "text",
+          text: { body: message },
         },
         {
           headers: {
@@ -1620,10 +1570,66 @@ app.post("/api/sendwhatsappMessage", async (c) => {
           },
         }
       );
-
-      console.log("Image message sent:", mediaId);
     }
 
+    const savedPaths = [];
+    if (images.length > 0) {
+      const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+      for (let i = 0; i < images.length; i++) {
+        const base64Data = images[i].split(",")[1];
+        const fileName = `img_${Date.now()}_${i}.png`;
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+        savedPaths.push(`/whatsapp_images/${fileName}`);
+      }
+
+      for (const imgPath of savedPaths) {
+        const filePath = path.join(process.cwd(), "..", "public", imgPath);
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(filePath));
+        formData.append("type", "image/png");
+        formData.append("messaging_product", "whatsapp");
+
+        const uploadRes = await axios.post(
+          "https://graph.facebook.com/v22.0/782872091578144/media",
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.META_TOKEN}`,
+              ...formData.getHeaders(),
+            },
+          }
+        );
+
+        const mediaId = uploadRes.data.id;
+
+        // ✅ Send image message (optionally include caption if message exists)
+        await axios.post(
+          "https://graph.facebook.com/v22.0/782872091578144/messages",
+          {
+            messaging_product: "whatsapp",
+            to: phone_no,
+            type: "image",
+            image: {
+              id: mediaId,
+              caption: message && message.trim() !== "" ? message : undefined,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.META_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        console.log("✅ Image message sent:", mediaId);
+      }
+    }
+
+    // ✅ 3. Save to Supabase
     const newMessage = {
       type: "Sent",
       message,
@@ -1676,9 +1682,6 @@ app.post("/api/sendwhatsappMessage", async (c) => {
     return c.json({ success: false, error: "Failed to send message" }, 500);
   }
 });
-
-
-
 
 // Health check
 app.get('/api/health', (c) => {

@@ -2,9 +2,6 @@ import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
 import {
   ArrowLeft,
@@ -54,7 +51,6 @@ interface Message {
   status: 'sending' | 'sent' | 'delivered' | 'read';
   type: 'text' | 'image' | 'document' | 'audio';
 }
-
 interface WhatsAppChatProps {
   onBack: () => void;
   selectedContactInfo?: {
@@ -83,141 +79,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Mock contacts data
-  const [contacts] = useState<Contact[]>([
-    {
-      id: '1',
-      name: 'Priya Sharma',
-      phone: '+91 98765 43210',
-      avatar: '',
-      isOnline: true,
-      unreadCount: 2,
-      lastMessage: {
-        text: 'Hi, I\'m interested in diamond rings',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        isFromMe: false
-      }
-    },
-    {
-      id: '2',
-      name: 'Rohit Mehta',
-      phone: '+91 87654 32109',
-      avatar: '',
-      isOnline: false,
-      lastSeen: '2 hours ago',
-      unreadCount: 0,
-      lastMessage: {
-        text: 'Thank you for the quick response!',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        isFromMe: false
-      }
-    },
-    {
-      id: '3',
-      name: 'Anjali Patel',
-      phone: '+91 76543 21098',
-      avatar: '',
-      isOnline: true,
-      unreadCount: 1,
-      lastMessage: {
-        text: 'Can you show me some necklace designs?',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        isFromMe: false
-      }
-    },
-    {
-      id: '4',
-      name: 'Kavya Shah',
-      phone: '+91 65432 10987',
-      avatar: '',
-      isOnline: false,
-      lastSeen: 'yesterday',
-      unreadCount: 0,
-      lastMessage: {
-        text: 'Perfect! I\'ll visit your store tomorrow.',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        isFromMe: false
-      }
-    }
-  ]);
-
-  // Auto-select contact if provided
-  // useEffect(() => {
-  //   if (selectedContactInfo) {
-  //     // Check if the contact already exists in the list
-  //     const existingContact = contacts.find(c => c.id === selectedContactInfo.id || c.phone === selectedContactInfo.phone);
-
-  //     if (existingContact) {
-  //       setSelectedContact(existingContact);
-  //     } else {
-  //       // Create a new contact from the provided info
-  //       const newContact: Contact = {
-  //         id: selectedContactInfo.id,
-  //         name: selectedContactInfo.name,
-  //         phone: selectedContactInfo.phone,
-  //         avatar: selectedContactInfo.avatar,
-  //         isOnline: false,
-  //         unreadCount: 0,
-  //         lastMessage: {
-  //           text: 'Click to start conversation',
-  //           timestamp: new Date(),
-  //           isFromMe: false
-  //         }
-  //       };
-  //       setSelectedContact(newContact);
-  //     }
-  //   }
-  // }, [selectedContactInfo, contacts]);
-
-  // Mock messages for selected contact
-  // useEffect(() => {
-  //   if (selectedContact) {
-  //     const mockMessages: Message[] = [
-  //       {
-  //         id: '1',
-  //         text: 'Hello! I saw your jewelry collection online.',
-  //         timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  //         isFromMe: false,
-  //         status: 'read',
-  //         type: 'text'
-  //       },
-  //       {
-  //         id: '2',
-  //         text: 'Hi! Thank you for your interest. How can I help you today?',
-  //         timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000 + 5 * 60 * 1000),
-  //         isFromMe: true,
-  //         status: 'read',
-  //         type: 'text'
-  //       },
-  //       {
-  //         id: '3',
-  //         text: 'I\'m looking for an engagement ring. Do you have diamond solitaires?',
-  //         timestamp: new Date(Date.now() - 90 * 60 * 1000),
-  //         isFromMe: false,
-  //         status: 'read',
-  //         type: 'text'
-  //       },
-  //       {
-  //         id: '4',
-  //         text: 'Yes, we have a beautiful collection of diamond solitaires. What\'s your budget range?',
-  //         timestamp: new Date(Date.now() - 85 * 60 * 1000),
-  //         isFromMe: true,
-  //         status: 'delivered',
-  //         type: 'text'
-  //       },
-  //       {
-  //         id: '5',
-  //         text: 'Around ₹50,000 to ₹80,000',
-  //         timestamp: new Date(Date.now() - 10 * 60 * 1000),
-  //         isFromMe: false,
-  //         status: 'read',
-  //         type: 'text'
-  //       }
-  //     ];
-  //     setMessages(mockMessages);
-  //   }
-  // }, [selectedContact]);
+  const [uploadingImages, setUploadingImages] = useState<string[]>([]);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -226,81 +88,39 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     }
   }, [messages, selectedContact?.message_history]);
 
-  // const handleSendMessage = () => {
-  //   if (!message.trim() || !selectedContact) return;
-
-  //   const newMessage: Message = {
-  //     id: Date.now().toString(),
-  //     text: message,
-  //     timestamp: new Date(),
-  //     isFromMe: true,
-  //     status: 'sending',
-  //     type: 'text'
-  //   };
-
-  //   setMessages(prev => [...prev, newMessage]);
-  //   setMessage('');
-
-  //   // Simulate message status updates
-  //   setTimeout(() => {
-  //     setMessages(prev => 
-  //       prev.map(msg => 
-  //         msg.id === newMessage.id ? { ...msg, status: 'sent' } : msg
-  //       )
-  //     );
-  //   }, 1000);
-
-  //   setTimeout(() => {
-  //     setMessages(prev => 
-  //       prev.map(msg => 
-  //         msg.id === newMessage.id ? { ...msg, status: 'delivered' } : msg
-  //       )
-  //     );
-  //   }, 2000);
-
-  //   // Simulate typing indicator and response
-  //   setTimeout(() => {
-  //     setIsTyping(true);
-  //   }, 3000);
-
-  //   setTimeout(() => {
-  //     setIsTyping(false);
-  //     const responseMessage: Message = {
-  //       id: (Date.now() + 1).toString(),
-  //       text: 'Thank you for your message. Let me check our current collection and get back to you shortly.',
-  //       timestamp: new Date(),
-  //       isFromMe: false,
-  //       status: 'read',
-  //       type: 'text'
-  //     };
-  //     setMessages(prev => [...prev, responseMessage]);
-  //   }, 5000);
-  // };
-
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const handleSendMessage = async ({
+    phone_no,
+    imagesOverride,
+  }: {
+    phone_no: string;
+    imagesOverride?: string[]; // optional image data if passed directly
+  }) => {
+    if ((!reply_message.trim() && !imagesOverride?.length) || !selectedContact) return;
+    setLoading(true);
 
-  const handleSendMessage = async ({ phone_no }: { phone_no: string }) => {
-    if (!reply_message.trim() || !selectedContact) return;
-    setLoading(true)
-    const imagesBase64 = await Promise.all(
-      images.map(async (url) => {
-        const blob = await fetch(url).then((res) => res.blob());
-        const base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(blob);
-        });
-        return base64;
-      })
-    );
+    const imagesToSend = imagesOverride
+      ? imagesOverride
+      : await Promise.all(
+        images.map(async (url) => {
+          const blob = await fetch(url).then((res) => res.blob());
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          return base64;
+        })
+      );
+
     try {
       const Message = {
         phone_no,
-        message: reply_message,
-        images: imagesBase64
+        message: reply_message || "", // handle empty message
+        images: imagesToSend,
       };
 
       const result = await sendWhatsappMessage(Message);
@@ -315,32 +135,26 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
 
           updatedHistory.push({
             type: "Sent",
-            message: reply_message,
+            message: reply_message || "", // may be empty for image-only
             images: result.data.savedPaths,
-            time: new Date().toISOString()
+            time: new Date().toISOString(),
           });
 
           return {
             ...preVal,
-            message_history: updatedHistory
+            message_history: updatedHistory,
           };
         });
-        setreplyMessage("")
-        set_images([])
-        setLoading(false)
+
+        // Reset states
+        setreplyMessage("");
+        set_images([]);
       }
     } catch (error) {
-      console.error('Error sending message', error);
-    };
-  }
-
-  const formatTime = (isoString: string): string => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+      console.error("Error sending message", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatLastSeen = (isoString: string): string => {
@@ -377,33 +191,50 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     return `${day}/${month}`;
   };
 
-  const getMessageStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sending':
-        return <Clock className="w-3 h-3 text-gray-400" />;
-      case 'sent':
-        return <Check className="w-3 h-3 text-gray-400" />;
-      case 'delivered':
-        return <CheckCheck className="w-3 h-3 text-gray-400" />;
-      case 'read':
-        return <CheckCheck className="w-3 h-3 text-blue-500" />;
-      default:
-        return null;
-    }
-  };
+  // const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files) {
+  //     const newImages = Array.from(e.target.files).map((file) =>
+  //       URL.createObjectURL(file)
+  //     );
+  //     set_images((prevImages) => [...prevImages, ...newImages]);
+  //   }
+  // };
 
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.phone.includes(searchTerm)
-  );
-
-  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+  const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && selectedContact) {
       const newImages = Array.from(e.target.files).map((file) =>
         URL.createObjectURL(file)
       );
 
+      // 1. Update the preview
       set_images((prevImages) => [...prevImages, ...newImages]);
+
+      // 2. Wait for state update before sending
+      setTimeout(async () => {
+        try {
+          // Convert images to Base64 for sending
+          const imagesBase64 = await Promise.all(
+            newImages.map(async (url) => {
+              const blob = await fetch(url).then((res) => res.blob());
+              const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              return base64;
+            })
+          );
+          console.log(imagesBase64, 'imagesBase64imagesBase64')
+
+          // 3. Send message using the existing send function
+          await handleSendMessage({
+            phone_no: String(selectedContact.recipient_number),
+            imagesOverride: imagesBase64, // 👈 we’ll handle this param in handleSendMessage
+          });
+        } catch (error) {
+          console.error("Error auto-sending image:", error);
+        }
+      }, 100); // slight delay ensures state is ready
     }
   };
 
@@ -654,8 +485,6 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
               </div>
               <div ref={messagesEndRef} />
             </div>
-
-            {/* Message Input */}
             <div className="p-4 bg-[#f0f2f5] border-t border-gray-200">
               <div className="flex items-center gap-2">
                 {/* <Button
@@ -672,13 +501,12 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
-
-                {/* Button that triggers file input */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleFileClick}
                   className="text-gray-600 hover:bg-gray-200 p-2 h-auto"
+                  style={{ cursor: "pointer" }}
                 >
                   <Paperclip className="w-5 h-5" />
                 </Button>
@@ -703,8 +531,6 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
                       <Send className="w-5 h-5" />
                     )}
                   </Button>
-
-
                   // <Button
                   //   variant="ghost"
                   //   size="sm"
