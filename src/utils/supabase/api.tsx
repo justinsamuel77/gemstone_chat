@@ -10,7 +10,7 @@ class ApiService {
   private getBaseUrl(): string {
     // Always use Supabase Edge Functions
     // return `https://${projectId}.supabase.co/functions/v1/make-server-2ed58025`;
-    return ` https://gemstone-chat.onrender.com/api`;
+    return `https://gemstone-chat.onrender.com/api`;
   }
 
   private getAuthHeaders(): HeadersInit {

@@ -2,19 +2,22 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { serve } from '@hono/node-server';
+import { Hono } from 'hono';
 
 // Load environment variables from ../.env
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
-import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { createClient } from '@supabase/supabase-js';
 import process from 'node:process';
 
 const app = new Hono();
+app.use('/whatsapp_images/*', serve({ root: './asset' }));
+
 
 // Environment variable validation
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
@@ -1472,7 +1475,7 @@ app.post('/webhook', async (c) => {
               });
 
               // 3. Save image locally
-              const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
+              const uploadDir = path.join(process.cwd(), "..", "asset", "whatsapp_images");
               if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
               const fileName = `img_${Date.now()}.jpg`;
@@ -1574,7 +1577,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
 
     const savedPaths = [];
     if (images.length > 0) {
-      const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
+      const uploadDir = path.join(process.cwd(), "..", "asset", "whatsapp_images");
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
       for (let i = 0; i < images.length; i++) {
@@ -1586,7 +1589,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
       }
 
       for (const imgPath of savedPaths) {
-        const filePath = path.join(process.cwd(), "..", "public", imgPath);
+        const filePath = path.join(process.cwd(), "..", "asset", imgPath);
         const formData = new FormData();
         formData.append("file", fs.createReadStream(filePath));
         formData.append("type", "image/png");

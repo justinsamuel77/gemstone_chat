@@ -7,18 +7,11 @@ import {
   ArrowLeft,
   Send,
   Paperclip,
-  Smile,
-  Mic,
   MoreVertical,
-  Phone,
-  Video,
   Search,
   Star,
   Archive,
   Trash2,
-  Check,
-  CheckCheck,
-  Clock,
   X,
   Loader2
 } from 'lucide-react';
@@ -68,7 +61,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     fileInputRef.current?.click();
   };
 
-  const BASE_URL = 'https://gemstone-chat.onrender.com/api'
+  const BASE_URL = 'https://gemstone-chat1.vercel.app/asset'
   const [images, set_images] = useState<string[]>([]);
   const { whatappmessage, sendWhatsappMessage, isLoading } = useDataManager();
   console.log('Whatsapp messages', whatappmessage)
