@@ -61,7 +61,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     fileInputRef.current?.click();
   };
 
-  const BASE_URL = 'https://gemstone-chat1.vercel.app/public'
+  const BASE_URL = 'https://gemstone-chat1.vercel.app'
   const [images, set_images] = useState<string[]>([]);
   const { whatappmessage, sendWhatsappMessage, isLoading } = useDataManager();
   console.log('Whatsapp messages', whatappmessage)
