@@ -61,7 +61,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     fileInputRef.current?.click();
   };
 
-  const BASE_URL = 'https://gemstone-chat1.vercel.app/asset'
+  const BASE_URL = 'https://gemstone-chat1.vercel.app/public'
   const [images, set_images] = useState<string[]>([]);
   const { whatappmessage, sendWhatsappMessage, isLoading } = useDataManager();
   console.log('Whatsapp messages', whatappmessage)
@@ -238,7 +238,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     URL.revokeObjectURL(imageUrl);
   };
 
-  console.log('images are', images)
+  console.log('images are', `${BASE_URL}`)
 
   return (
     <div className="h-screen flex bg-[#f0f2f5]">

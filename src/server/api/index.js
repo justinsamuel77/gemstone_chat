@@ -1475,7 +1475,7 @@ app.post('/webhook', async (c) => {
               });
 
               // 3. Save image locally
-              const uploadDir = path.join(process.cwd(), "..", "asset", "whatsapp_images");
+              const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
               if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
               const fileName = `img_${Date.now()}.jpg`;
@@ -1577,7 +1577,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
 
     const savedPaths = [];
     if (images.length > 0) {
-      const uploadDir = path.join(process.cwd(), "..", "asset", "whatsapp_images");
+      const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
       for (let i = 0; i < images.length; i++) {
@@ -1589,7 +1589,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
       }
 
       for (const imgPath of savedPaths) {
-        const filePath = path.join(process.cwd(), "..", "asset", imgPath);
+        const filePath = path.join(process.cwd(), "..", "public", imgPath);
         const formData = new FormData();
         formData.append("file", fs.createReadStream(filePath));
         formData.append("type", "image/png");
