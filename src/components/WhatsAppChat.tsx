@@ -61,7 +61,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     fileInputRef.current?.click();
   };
 
-  const BASE_URL = 'https://gemstone-chat1.vercel.app'
+  // const BASE_URL = 'https://gemstone-chat1.vercel.app'
   const [images, set_images] = useState<string[]>([]);
   const { whatappmessage, sendWhatsappMessage, isLoading } = useDataManager();
   console.log('Whatsapp messages', whatappmessage)
@@ -129,7 +129,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
           updatedHistory.push({
             type: "Sent",
             message: reply_message || "", // may be empty for image-only
-            images: result.data.savedPaths,
+            images: result.data.uploadedImages,
             time: new Date().toISOString(),
           });
 
@@ -237,8 +237,6 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     );
     URL.revokeObjectURL(imageUrl);
   };
-
-  console.log('images are', `${BASE_URL}`)
 
   return (
     <div className="h-screen flex bg-[#f0f2f5]">
@@ -415,7 +413,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
                         }`}
                     >
                       {msg.images && msg.images.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2 mt-2">
+                        <div className="gap-2 mt-2">
                           {msg.images.map((img, i) => (
                             <img
                               key={i}
@@ -438,7 +436,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
                 ))}
 
                 {(images && images.length > 0) && (
-                  <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
+                  <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32">
                     {images.map((image, index) => (
                       <div key={index} className="relative flex-shrink-0">
                         <img
