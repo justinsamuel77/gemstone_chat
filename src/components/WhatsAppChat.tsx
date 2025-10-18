@@ -93,7 +93,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
     imagesOverride?: string[]; // optional image data if passed directly
   }) => {
     if ((!reply_message.trim() && !imagesOverride?.length) || !selectedContact) return;
-      setLoading(true);
+    setLoading(true);
 
     const imagesToSend = imagesOverride
       ? imagesOverride
@@ -419,7 +419,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
                           {msg.images.map((img, i) => (
                             <img
                               key={i}
-                              src={`${BASE_URL}${img}`}
+                              src={img}
                               alt={`attachment-${i}`}
                               className="w-24 h-24 object-cover rounded-md border"
                             />

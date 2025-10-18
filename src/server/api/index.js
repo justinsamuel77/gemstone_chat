@@ -58,7 +58,7 @@ const supabase = createClient(
 const verifyAuth = async (request) => {
   const authHeader = request.headers.get('Authorization');
   console.log('🔐 Auth header received:', authHeader ? 'Present' : 'Missing');
-  
+
   if (!authHeader) {
     console.log('❌ No authorization header found');
     return null;
@@ -72,32 +72,32 @@ const verifyAuth = async (request) => {
 
   const accessToken = parts[1];
   console.log('🔑 Extracted token:', accessToken ? 'Present' : 'Missing');
-  
+
   // Check if token looks like the anon key (fallback for unauthenticated requests)
   const anonKey = process.env.SUPABASE_ANON_KEY;
   if (accessToken === anonKey) {
     console.log('⚠️ Using anon key - no user authentication');
     return null;
   }
-  
+
   try {
     const authClient = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
-    
+
     const { data: { user }, error } = await authClient.auth.getUser(accessToken);
-    
+
     if (error) {
       console.error('❌ Auth verification error:', error.message);
       return null;
     }
-    
+
     if (!user?.id) {
       console.log('❌ No user found for token');
       return null;
     }
-    
+
     console.log('✅ User authenticated:', user.id);
     return user;
   } catch (error) {
@@ -110,7 +110,7 @@ const verifyAuth = async (request) => {
 app.get('/api/setup-database', async (c) => {
   try {
     console.log('🔄 Checking database table status...');
-    
+
     const tableChecks = await Promise.allSettled([
       supabase.from('leads').select('id').limit(1),
       supabase.from('orders').select('id').limit(1),
@@ -124,7 +124,7 @@ app.get('/api/setup-database', async (c) => {
 
     const tableStatus = {
       leads: tableChecks[0].status === 'fulfilled' ? 'exists' : 'needs_creation',
-      orders: tableChecks[1].status === 'fulfilled' ? 'exists' : 'needs_creation', 
+      orders: tableChecks[1].status === 'fulfilled' ? 'exists' : 'needs_creation',
       dealers: tableChecks[2].status === 'fulfilled' ? 'exists' : 'needs_creation',
       employees: tableChecks[3].status === 'fulfilled' ? 'exists' : 'needs_creation',
       inventory: tableChecks[4].status === 'fulfilled' ? 'exists' : 'needs_creation',
@@ -135,7 +135,7 @@ app.get('/api/setup-database', async (c) => {
 
     console.log('📊 Table status:', tableStatus);
 
-    return c.json({ 
+    return c.json({
       message: 'Database setup check completed',
       tables: tableStatus
     });
@@ -148,7 +148,7 @@ app.get('/api/setup-database', async (c) => {
 app.post('/api/setup-database', async (c) => {
   try {
     console.log('🔄 Creating database tables...');
-    
+
     // SQL script for creating all necessary tables
     const createTablesSQL = `
 -- Enable UUID extension
@@ -352,10 +352,10 @@ END $;
 
     if (error) {
       console.error('❌ Database table creation error:', error);
-      
+
       // Try alternative approach - create tables one by one
       console.log('🔄 Attempting to create tables individually...');
-      
+
       const tables = [
         {
           name: 'user_profiles',
@@ -413,7 +413,7 @@ END $;
       ];
 
       const createResults = {};
-      
+
       for (const table of tables) {
         try {
           const { error: tableError } = await supabase.rpc('exec_sql', { sql_script: table.sql });
@@ -470,10 +470,10 @@ END $;
     });
   } catch (error) {
     console.error('💥 Database setup creation error:', error);
-    return c.json({ 
+    return c.json({
       success: false,
-      error: 'Failed to create database tables', 
-      details: error.message 
+      error: 'Failed to create database tables',
+      details: error.message
     }, 500);
   }
 });
@@ -486,9 +486,9 @@ app.post('/api/signup', async (c) => {
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
-      user_metadata: { 
-        firstName, 
-        lastName, 
+      user_metadata: {
+        firstName,
+        lastName,
         company: company || '',
         jobTitle: jobTitle || '',
         name: `${firstName} ${lastName}`
@@ -604,7 +604,7 @@ app.get('/api/leads', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: leads, error } = await supabase
       .from('leads')
       .select('*')
@@ -614,10 +614,10 @@ app.get('/api/leads', async (c) => {
     if (error) {
       console.error('❌ Database error fetching leads:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          leads: [], 
+        return c.json({
+          leads: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch leads' }, 500);
@@ -655,9 +655,9 @@ app.post('/api/leads', async (c) => {
     if (error) {
       console.error('❌ Database error creating lead:', error);
       if (error.code === '42P01') {
-        return c.json({ 
+        return c.json({
           error: 'Database tables not set up. Please run database setup first.',
-          tableExists: false 
+          tableExists: false
         }, 400);
       }
       return c.json({ error: 'Failed to create lead' }, 500);
@@ -677,7 +677,7 @@ app.get('/api/orders', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: orders, error } = await supabase
       .from('orders')
       .select('*')
@@ -687,10 +687,10 @@ app.get('/api/orders', async (c) => {
     if (error) {
       console.error('❌ Database error fetching orders:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          orders: [], 
+        return c.json({
+          orders: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch orders' }, 500);
@@ -710,7 +710,7 @@ app.get('/api/dealers', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: dealers, error } = await supabase
       .from('dealers')
       .select('*')
@@ -720,10 +720,10 @@ app.get('/api/dealers', async (c) => {
     if (error) {
       console.error('❌ Database error fetching dealers:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          dealers: [], 
+        return c.json({
+          dealers: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch dealers' }, 500);
@@ -761,9 +761,9 @@ app.post('/api/dealers', async (c) => {
     if (error) {
       console.error('❌ Database error creating dealer:', error);
       if (error.code === '42P01') {
-        return c.json({ 
+        return c.json({
           error: 'Database tables not set up. Please run database setup first.',
-          tableExists: false 
+          tableExists: false
         }, 400);
       }
       return c.json({ error: 'Failed to create dealer' }, 500);
@@ -845,7 +845,7 @@ app.get('/api/employees', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: employees, error } = await supabase
       .from('employees')
       .select('*')
@@ -855,10 +855,10 @@ app.get('/api/employees', async (c) => {
     if (error) {
       console.error('❌ Database error fetching employees:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          employees: [], 
+        return c.json({
+          employees: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch employees' }, 500);
@@ -896,9 +896,9 @@ app.post('/api/employees', async (c) => {
     if (error) {
       console.error('❌ Database error creating employee:', error);
       if (error.code === '42P01') {
-        return c.json({ 
+        return c.json({
           error: 'Database tables not set up. Please run database setup first.',
-          tableExists: false 
+          tableExists: false
         }, 400);
       }
       return c.json({ error: 'Failed to create employee' }, 500);
@@ -980,7 +980,7 @@ app.get('/api/inventory', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: inventory, error } = await supabase
       .from('inventory')
       .select('*')
@@ -990,10 +990,10 @@ app.get('/api/inventory', async (c) => {
     if (error) {
       console.error('❌ Database error fetching inventory:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          inventory: [], 
+        return c.json({
+          inventory: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch inventory' }, 500);
@@ -1031,9 +1031,9 @@ app.post('/api/inventory', async (c) => {
     if (error) {
       console.error('❌ Database error creating inventory:', error);
       if (error.code === '42P01') {
-        return c.json({ 
+        return c.json({
           error: 'Database tables not set up. Please run database setup first.',
-          tableExists: false 
+          tableExists: false
         }, 400);
       }
       return c.json({ error: 'Failed to create inventory' }, 500);
@@ -1088,7 +1088,7 @@ app.get('/api/inventory/transactions', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     // Fetch transactions with related inventory, dealer, and employee data
     const { data: transactions, error } = await supabase
       .from('inventory_transactions')
@@ -1104,10 +1104,10 @@ app.get('/api/inventory/transactions', async (c) => {
     if (error) {
       console.error('❌ Database error fetching inventory transactions:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          transactions: [], 
+        return c.json({
+          transactions: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch inventory transactions' }, 500);
@@ -1178,7 +1178,7 @@ app.post('/api/inventory/transactions', async (c) => {
 
     const { data: updatedInventory, error: inventoryUpdateError } = await supabase
       .from('inventory')
-      .update({ 
+      .update({
         quantity: newQuantity,
         updated_at: new Date().toISOString()
       })
@@ -1192,7 +1192,7 @@ app.post('/api/inventory/transactions', async (c) => {
       return c.json({ error: 'Failed to update inventory quantity' }, 500);
     }
 
-    return c.json({ 
+    return c.json({
       transaction,
       updatedInventory
     });
@@ -1290,9 +1290,9 @@ app.post('/api/orders', async (c) => {
     if (error) {
       console.error('❌ Database error creating order:', error);
       if (error.code === '42P01') {
-        return c.json({ 
+        return c.json({
           error: 'Database tables not set up. Please run database setup first.',
-          tableExists: false 
+          tableExists: false
         }, 400);
       }
       return c.json({ error: 'Failed to create order' }, 500);
@@ -1393,7 +1393,7 @@ app.get('/api/whatsapp', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: whatsappmessages, error } = await supabase
       .from('whatsapp')
       .select('*')
@@ -1403,10 +1403,10 @@ app.get('/api/whatsapp', async (c) => {
     if (error) {
       console.error('❌ Database error fetching leads:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          whatsappmessages: [], 
+        return c.json({
+          whatsappmessages: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch whatsapp messages' }, 500);
@@ -1417,6 +1417,14 @@ app.get('/api/whatsapp', async (c) => {
     console.error('💥 Exception in leads endpoint:', error);
     return c.json({ error: 'Failed to fetch whatsapp messages' }, 500);
   }
+});
+
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: "danf5ml6w",
+  api_key: "159151341741153",
+  api_secret: "E27p0Fe8IH96yjkxWz2Ua-DHJVg",
 });
 
 app.post('/webhook', async (c) => {
@@ -1436,7 +1444,7 @@ app.post('/webhook', async (c) => {
 
       if (messages && messages.length > 0) {
         const message = messages[0];
-        const from = message.from; 
+        const from = message.from;
         const messageType = message.type;
 
         const newMessage = {
@@ -1453,7 +1461,6 @@ app.post('/webhook', async (c) => {
 
         // ✅ Handle image messages
         if (messageType === 'image') {
-          // WhatsApp webhook gives you an ID, you need to fetch the actual media
           const mediaId = message.image?.id;
           if (mediaId) {
             try {
@@ -1462,29 +1469,33 @@ app.post('/webhook', async (c) => {
                 `https://graph.facebook.com/v22.0/${mediaId}`,
                 {
                   headers: { Authorization: `Bearer ${process.env.META_TOKEN}` },
-                  responseType: 'json'
                 }
               );
 
-              const mediaUrl = mediaRes.data.url; // URL to download image
+              const mediaUrl = mediaRes.data.url;
 
-              // 2. Download the image
+              // 2. Download image as buffer
               const imageResp = await axios.get(mediaUrl, {
                 headers: { Authorization: `Bearer ${process.env.META_TOKEN}` },
-                responseType: 'arraybuffer'
+                responseType: 'arraybuffer',
               });
 
-              // 3. Save image locally
-              const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
-              if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+              // 3. Upload buffer to Cloudinary
+              const uploadRes = await cloudinary.uploader.upload_stream(
+                {
+                  folder: 'whatsapp_images',
+                  resource_type: 'image',
+                },
+                (error, result) => {
+                  if (error) throw error;
+                  newMessage.images.push(result.secure_url);
+                }
+              );
 
-              const fileName = `img_${Date.now()}.jpg`;
-              const filePath = path.join(uploadDir, fileName);
-              fs.writeFileSync(filePath, Buffer.from(imageResp.data));
-
-              newMessage.images.push(`/whatsapp_images/${fileName}`);
+              // Important: end stream
+              uploadRes.end(Buffer.from(imageResp.data));
             } catch (imgErr) {
-              console.error('❌ Failed to download/save image:', imgErr);
+              console.error('❌ Failed to download/upload image:', imgErr);
             }
           }
         }
@@ -1576,59 +1587,60 @@ app.post("/api/sendwhatsappMessage", async (c) => {
     }
 
     const savedPaths = [];
+    const uploadedImages = [];
     if (images.length > 0) {
-      const uploadDir = path.join(process.cwd(), "..", "public", "whatsapp_images");
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
       for (let i = 0; i < images.length; i++) {
-        const base64Data = images[i].split(",")[1];
-        const fileName = `img_${Date.now()}_${i}.png`;
-        const filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-        savedPaths.push(`/whatsapp_images/${fileName}`);
-      }
+        const base64Data = images[i];
+        try {
+          const uploadRes = await cloudinary.uploader.upload(base64Data, {
+            folder: 'whatsapp_images',
+            resource_type: 'image',
+          });
 
-      for (const imgPath of savedPaths) {
-        const filePath = path.join(process.cwd(), "..", "public", imgPath);
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(filePath));
-        formData.append("type", "image/png");
-        formData.append("messaging_product", "whatsapp");
+          uploadedImages.push(uploadRes.secure_url);
 
-        const uploadRes = await axios.post(
-          "https://graph.facebook.com/v22.0/782872091578144/media",
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.META_TOKEN}`,
-              ...formData.getHeaders(),
+          // Then upload to WhatsApp Media
+          const formData = new FormData();
+          formData.append('file', uploadRes.secure_url);
+          formData.append('type', 'image/png');
+          formData.append('messaging_product', 'whatsapp');
+
+          const uploadResFB = await axios.post(
+            'https://graph.facebook.com/v22.0/782872091578144/media',
+            formData,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.META_TOKEN}`,
+                ...formData.getHeaders(),
+              },
+            }
+          );
+
+          const mediaId = uploadResFB.data.id;
+
+          await axios.post(
+            'https://graph.facebook.com/v22.0/782872091578144/messages',
+            {
+              messaging_product: 'whatsapp',
+              to: phone_no,
+              type: 'image',
+              image: {
+                id: mediaId,
+                caption: message && message.trim() !== '' ? message : undefined,
+              },
             },
-          }
-        );
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.META_TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
 
-        const mediaId = uploadRes.data.id;
-
-        // ✅ Send image message (optionally include caption if message exists)
-        await axios.post(
-          "https://graph.facebook.com/v22.0/782872091578144/messages",
-          {
-            messaging_product: "whatsapp",
-            to: phone_no,
-            type: "image",
-            image: {
-              id: mediaId,
-              caption: message && message.trim() !== "" ? message : undefined,
-            },
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.META_TOKEN}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        console.log("✅ Image message sent:", mediaId);
+          console.log('✅ Sent image:', mediaId);
+        } catch (err) {
+          console.error('❌ Cloudinary upload/send error:', err);
+        }
       }
     }
 
@@ -1637,7 +1649,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
       type: "Sent",
       message,
       time: new Date().toISOString(),
-      images: savedPaths,
+      images: uploadedImages,
     };
 
     const { data: existing, error: fetchError } = await supabase
@@ -1679,7 +1691,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
       }
     }
 
-    return c.json({ success: true, savedPaths }, 200);
+    return c.json({ success: true, uploadedImages }, 200);
   } catch (err) {
     console.error("❌ Error sending message:", err?.response?.data || err.message);
     return c.json({ success: false, error: "Failed to send message" }, 500);
@@ -1688,8 +1700,8 @@ app.post("/api/sendwhatsappMessage", async (c) => {
 
 // Health check
 app.get('/api/health', (c) => {
-  return c.json({ 
-    status: 'ok', 
+  return c.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
