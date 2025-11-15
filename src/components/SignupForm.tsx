@@ -8,7 +8,8 @@ import { Alert, AlertDescription } from './ui/alert';
 import { SocialSigninButtons } from './SocialSigninButtons';
 import { Icons } from './ui/icons';
 import { authApi } from '../utils/supabase/client';
-import type { AuthFlow } from './AuthFlowContainer';
+
+export type AuthFlow = 'signin' | 'signup' | 'forgot-password';
 
 interface FormData {
   email: string;
@@ -26,6 +27,7 @@ interface SignupFormProps {
 
 export function SignupForm({ onFlowChange }: SignupFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -62,6 +64,14 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // If not on the last step, just move to next step
+    if (currentStep < totalSteps) {
+      nextStep();
+      return;
+    }
+
+    // Only process signup on the last step
     setError('');
 
     // Validate passwords match
@@ -93,7 +103,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
     } catch (error) {
       console.error('Signup error:', error);
       let errorMessage = 'An error occurred during signup';
-      
+
       if (error instanceof Error) {
         if (error.message.includes('User already registered')) {
           errorMessage = 'An account with this email already exists. Please try signing in instead.';
@@ -105,7 +115,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
           errorMessage = error.message;
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -117,9 +127,9 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
       case 1:
         return formData.email && formData.password && formData.confirmPassword;
       case 2:
-        return formData.firstName && formData.lastName;
+        return formData.firstName && formData.lastName && isTermsAccepted;
       case 3:
-        return true; // Company info is optional
+        return true; // optional fields
       default:
         return false;
     }
@@ -133,12 +143,12 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
           <Icons.Check className="w-8 h-8 text-green-600" />
         </div>
         <div className="space-y-2">
-          <h2>Account Created Successfully!</h2>
+          <h2 className="text-2xl font-bold">Account Created Successfully!</h2>
           <p className="text-muted-foreground">
             Welcome to our platform, {formData.firstName}! You can now sign in with your credentials.
           </p>
         </div>
-        <Button 
+        <Button
           onClick={() => onFlowChange?.('signin')}
           className="w-full"
         >
@@ -152,7 +162,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2>Create Your Account</h2>
+        <h2 className="text-2xl font-bold">Create Your Account</h2>
         <p className="text-muted-foreground">
           Join us in just a few simple steps
         </p>
@@ -179,7 +189,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
       {currentStep === 1 && (
         <>
           <SocialSigninButtons />
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full" />
@@ -209,7 +219,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -221,7 +231,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
@@ -250,7 +260,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
@@ -260,6 +270,17 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
                   onChange={(e) => updateFormData('lastName', e.target.value)}
                   required
                 />
+              </div>
+            </div>
+            <div className='flex gap-2'>
+              <input
+                type='checkbox'
+                checked={isTermsAccepted}
+                onChange={(e) => setIsTermsAccepted(e.target.checked)}
+              />
+              <div>
+                By signing up, you have read and agreed to our
+                <a href='/privacy-policy' className="text-primary ml-1">Privacy Policy.</a>
               </div>
             </div>
           </div>
@@ -277,7 +298,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
                 onChange={(e) => updateFormData('company', e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="jobTitle">Job Title (Optional)</Label>
               <Input
@@ -302,7 +323,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
             <Icons.ArrowLeft className="w-4 h-4" />
             Back
           </Button>
-          
+
           {currentStep < totalSteps ? (
             <Button
               type="button"
@@ -334,7 +355,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
       <div className="text-center">
         <p className="text-sm text-muted-foreground">
           Already have an account?{' '}
-          <button 
+          <button
             type="button"
             className="text-primary hover:underline"
             onClick={() => onFlowChange?.('signin')}
