@@ -608,7 +608,7 @@ app.get('/api/leads', async (c) => {
     const { data: leads, error } = await supabase
       .from('leads')
       .select('*')
-      .eq('user_id', user.id)
+      // .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
