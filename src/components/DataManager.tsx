@@ -107,6 +107,7 @@ interface message_history {
   time: string;
   type: string;
   message: string;
+  images?:string [];
 }
 
 interface Whatsapp {
@@ -117,10 +118,23 @@ interface Whatsapp {
   created_at: string;
 }
 
+interface Instagram {
+  id: string;
+  psid: number;
+  avatar?:string;
+  user_name: string
+  message_history:message_history [],
+  created_at: string;
+}
 interface Message {
   phone_no:number;
   message:string;
   images: string[];
+}
+
+interface InstagramMessage {
+  psid:number;
+  message:string;
 }
 
 
@@ -131,6 +145,7 @@ interface DataManagerContextType {
   employees: Employee[];
   inventory: Inventory[];
   whatappmessage : Whatsapp[];
+  instagrammessage: Instagram[];
   inventoryTransactions: InventoryTransaction[];
   isLoading: boolean;
   error: string | null;
@@ -166,6 +181,9 @@ interface DataManagerContextType {
 
   //Whatsapp opeartions
   sendWhatsappMessage: (message: any) => Promise<Message | boolean| null | any>;
+
+  //Instagram opeartions
+  sendInstagramMessage:  (message: any) => Promise<InstagramMessage | boolean| null | any>;
 }
 
 const DataManagerContext = createContext<DataManagerContextType | null>(null);
@@ -191,6 +209,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
   const [whatappmessage, setWhatsapp] = useState<Whatsapp[]>([]);
+  const [instagrammessage, setInstagram] = useState<Instagram[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -206,14 +225,15 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     setError(null);
 
     try {
-      const [leadsResponse, ordersResponse, dealersResponse, employeesResponse, inventoryResponse, transactionsResponse,whatsappResponse] = await Promise.all([
+      const [leadsResponse, ordersResponse, dealersResponse, employeesResponse, inventoryResponse, transactionsResponse,whatsappResponse,instagramResponse] = await Promise.all([
         apiService.getLeads(),
         apiService.getOrders(),
         apiService.getDealers(),
         apiService.getEmployees(), // APi calls
         apiService.getInventory(),
         apiService.getInventoryTransactions(),
-        apiService.getWhatsappMessages()
+        apiService.getWhatsappMessages(),
+        apiService.getInstagramMessages()
       ]);
 
       console.log('📥 API Responses:', {
@@ -223,7 +243,8 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
         employees: { success: employeesResponse.success, count: employeesResponse.data?.employees?.length },
         inventory: { success: inventoryResponse.success, count: inventoryResponse.data?.inventory?.length },
         transactions: { success: transactionsResponse.success, count: transactionsResponse.data?.transactions?.length },
-        whatsapp: { success: whatsappResponse.success, count: whatsappResponse.data?.whatsapp?.length }
+        whatsapp: { success: whatsappResponse.success, count: whatsappResponse.data?.whatsappmessages?.length },
+        instagram: { success: instagramResponse.success, count: instagramResponse.data?.instagrammessages?.length }
       });
 
       // Update leads - convert from database format to frontend format
@@ -346,6 +367,13 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
         console.log(`✅ Loaded ${whatsappResponse.data.whatsappmessages.length} whatapp messages`);
       } else {
         console.error('❌ Failed to load whatsappmessage:', whatsappResponse.error);
+      }
+
+      if (instagramResponse.success && instagramResponse.data?.instagrammessages) {
+        setInstagram(instagramResponse.data.instagrammessages);
+        console.log(`✅ Loaded ${instagramResponse.data.instagrammessages.length} instagram messages`);
+      } else {
+        console.error('❌ Failed to load instagrammessage:', instagramResponse.error);
       }
       
 
@@ -948,6 +976,25 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     }
   }, []);
 
+    const sendInstagramMessage = useCallback(async (message: any): Promise<boolean | null | any> => {
+      console.log('🔄 Sending instagram message:', message);
+      
+      try {
+        const response = await apiService.sentInstagramMessages(message);     
+        if (response.success ) {   
+          return response;
+        } else {
+          console.error('❌ Failed to Send instagram message:', response.error);
+          setError(response.error || 'Failed to Send message');
+          return false;
+        }
+      } catch (error) {
+        console.error('💥 Exception Sending instagram message:', error);
+        setError(error instanceof Error ? error.message : 'Failed to Send message');
+        return false;
+      }
+    }, [])
+
   const contextValue: DataManagerContextType = {
     leads,
     orders,
@@ -958,6 +1005,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     isLoading,
     error,
     whatappmessage,
+    instagrammessage,
     loadAllData,
     refreshData,
     createLead,
@@ -976,6 +1024,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     updateInventory,
     createInventoryTransaction,
     sendWhatsappMessage,
+    sendInstagramMessage
   };
 
   return (

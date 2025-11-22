@@ -276,6 +276,11 @@ class ApiService {
     return this.request<{ whatsappmessages: any[] }>('/whatsapp');
   }
 
+  async getInstagramMessages() {
+    console.log('Fetching instagram messages...');
+    return this.request<{ instagrammessages: any[] }>('/instagram');
+  }
+
   async sentWhatsappMessages(message:any) {
     // return this.request<{ whatsappmessage: any[] }>('/sendwhatsappMessage');
     console.log('APi message is',message)
@@ -283,6 +288,16 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(message),
     });
+  }
+
+  async sentInstagramMessages(message:any) {
+    // return this.request<{ whatsappmessage: any[] }>('/sendinstagramMessage');
+    console.log('Instagram APi message is',message)
+     return this.request<{  instagrammessage: any }>('/sendinstagramMessage', {
+      method: 'POST',
+      body: JSON.stringify(message),
+    });
+    
   }
   
 }

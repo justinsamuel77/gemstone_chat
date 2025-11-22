@@ -1698,6 +1698,303 @@ app.post("/api/sendwhatsappMessage", async (c) => {
   }
 });
 
+app.get('/api/instagram', async (c) => {
+  try {
+    const user = await verifyAuth(c.req.raw);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    
+    const { data: instagrammessages, error } = await supabase
+      .from('instagram')
+      .select('*')
+      // .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Database error fetching leads:', error);
+      if (error.code === '42P01') {
+        return c.json({ 
+          instagrammessages: [], 
+          warning: 'Database tables not set up. Please run database setup.',
+          tableExists: false 
+        });
+      }
+      return c.json({ error: 'Failed to fetch instagram messages' }, 500);
+    }
+
+    return c.json({ instagrammessages: instagrammessages || [] });
+  } catch (error) {
+    console.error('💥 Exception in leads endpoint:', error);
+    return c.json({ error: 'Failed to fetch instagram messages' }, 500);
+  }
+});
+
+// ✅ Webhook verification endpoint (GET)
+app.get('/instawebhook', (c) => {
+  console.log('insta webhook called');
+
+  const url = new URL(c.req.url);
+  const mode = url.searchParams.get('hub.mode');
+  const token = url.searchParams.get('hub.verify_token');
+  const challenge = url.searchParams.get('hub.challenge');
+
+  if (mode && token === MY_token) {
+    console.log("insta Webhook verified!");
+    return c.text(challenge, 200);
+  } else {
+    return c.body(null, 403);
+  }
+});
+
+app.post("/instawebhook", async (c) => {
+  console.log("Incoming Instagram Webhook");
+
+  const body = await c.req.json();
+  console.log("Webhook Body:", JSON.stringify(body, null, 2));
+
+  // Handle challenge verification (optional safety)
+  const url = new URL(c.req.url);
+  const challenge = url.searchParams.get("hub.challenge");
+  if (challenge) {
+    console.log('is challenge')
+    // return c.text(challenge)
+  };
+
+  // // ---- Instagram DM Event Parsing ----
+  // console.log('Body is',body)
+  // console.log('message is',body.entry[0].messaging)
+  try {
+    const entry = body.entry?.[0];
+    const messaging = entry?.messaging?.[0];
+
+    if (!messaging) {
+      console.log("No messaging event found");
+      return c.json({ status: "no-event" });
+    }
+
+    const timestamp = messaging?.timestamp;
+    const TWO_MINUTES = 1 * 60 * 1000;
+
+    if (timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+
+    if (diff > TWO_MINUTES) {
+      // Convert timestamp to IST (+5:30)
+      const istTime = timestamp + (5.5 * 60 * 60 * 1000);
+      console.log('Time fail')
+      return c.json({
+        status: "invalid-event",
+        time: istTime
+      });
+    }
+   }
+
+    const senderId = messaging.sender?.id;
+    const text =
+      messaging.message?.text ??
+      messaging.message?.message ?? 
+      null;
+      
+
+    console.log("Sender PSID:", senderId);
+    console.log("Received Message:", text);
+
+     // Step 1: Fetch existing record
+        const { data: existing, error: fetchError } = await supabase
+          .from('instagram')
+          .select('psid, message_history')
+          .eq('psid', senderId)
+          .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('❌ Fetch error:', fetchError);
+          return c.json({ success: false, error: 'Failed to fetch existing record' }, 500);
+        }
+
+        const newMessage = {
+          type: 'Received',
+          message:text ,
+          images: [],
+          time: new Date().toISOString()
+        };
+
+        if (existing) {
+          // Append to message history
+          const updatedMessages = [...existing.message_history, newMessage];
+          const { error: updateError } = await supabase
+            .from('instagram')
+            .update({ message_history: updatedMessages })
+            .eq('psid', existing.psid);
+
+          if (updateError) {
+            console.error('❌ Update error:', updateError);
+            return c.json({ success: false, error: 'Failed to update message history' }, 500);
+          }
+        } else {
+          // Insert new record
+          const insertPayload = {
+            psid: senderId,
+            message_history: [newMessage]
+          };
+          console.log('inserting new record')
+
+          const { error: insertError } = await supabase
+            .from('instagram')
+            .insert([insertPayload]);
+
+          if (insertError) {
+            console.error('❌ Insert error:', insertError);
+            return c.json({ success: false, error: 'Failed to insert new message record' }, 500);
+          }
+        }
+
+    // Save senderId + message to DB if needed
+    // await saveIncomingMessage(senderId, text);
+
+    return c.json({ status: "received", senderId, text });
+  } catch (err) {
+    console.error("Webhook Error:", err);
+    return c.json({ error: "webhook error" }, 500);
+  }
+});
+
+app.post("/api/sendinstagramMessage", async (c) => {
+  try {
+    const user = await verifyAuth(c.req.raw);
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const body = await c.req.json();
+    const { psid,message, images = [] } = body;
+
+    console.log("Psid :", psid);
+    console.log("Images:", images.length);
+
+    const textRes = await axios.post(
+      "https://graph.instagram.com/v21.0/me/messages",
+      {
+        message: JSON.stringify({
+          text: message, 
+        }),
+        recipient: JSON.stringify({
+          id: psid 
+        }),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.INSTA_META_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Text message sent:", textRes.data);
+
+    const uploadDir = path.join(process.cwd(), "..", "public", "instagram_images");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const savedPaths = [];
+    for (let i = 0; i < images.length; i++) {
+      const base64Data = images[i].split(",")[1];
+      const fileName = `img_${Date.now()}_${i}.png`;
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+      savedPaths.push(`/instagram_images/${fileName}`);
+    }
+
+    for (const imgPath of savedPaths) {
+      const filePath = path.join(process.cwd(), "..", "public", imgPath);
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(filePath));
+      formData.append("type", "image/png");
+      formData.append("messaging_product", "instagran");
+
+      const uploadRes = await axios.post(
+        "https://graph.facebook.com/v22.0/782872091578144/media",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.META_TOKEN}`,
+            ...formData.getHeaders(),
+          },
+        }
+      );
+
+      const mediaId = uploadRes.data.id;
+
+      // Send image message using the uploaded media ID
+      await axios.post(
+        "https://graph.facebook.com/v22.0/782872091578144/messages",
+        {
+          messaging_product: "whatsapp",
+          to: phone_no,
+          type: "image",
+          image: { id: mediaId },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.META_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("Image message sent:", mediaId);
+    }
+
+    const newMessage = {
+      type: "Sent",
+      message,
+      time: new Date().toISOString(),
+      images: savedPaths,
+    };
+
+    const { data: existing, error: fetchError } = await supabase
+      .from("instagram")
+      .select("psid, message_history")
+      .eq("psid", psid)
+      .single();
+
+    if (fetchError && fetchError.code !== "PGRST116") {
+      console.error("❌ Fetch error:", fetchError);
+      return c.json({ error: "Failed to fetch existing record" }, 500);
+    }
+
+    if (existing) {
+      const updatedMessages = [...existing.message_history, newMessage];
+      const { error: updateError } = await supabase
+        .from("instagram")
+        .update({ message_history: updatedMessages })
+        .eq("psid", existing.psid);
+
+      if (updateError) {
+        console.error("❌ Update error:", updateError);
+        return c.json({ error: "Failed to update message history" }, 500);
+      }
+    } else {
+      const insertPayload = {
+        psid: psid,
+        message_history: [newMessage],
+      };
+
+      const { error: insertError } = await supabase
+        .from("instagram")
+        .insert([insertPayload]);
+
+      if (insertError) {
+        console.error("❌ Insert error:", insertError);
+        return c.json({ error: "Failed to insert new message record" }, 500);
+      }
+    }
+
+    return c.json({ success: true, savedPaths }, 200);
+  } catch (err) {
+    console.error("❌ Error sending message:", err?.response?.data || err.message);
+    return c.json({ success: false, error: "Failed to send message" }, 500);
+  }
+});
+
 // Health check
 app.get('/api/health', (c) => {
   return c.json({
