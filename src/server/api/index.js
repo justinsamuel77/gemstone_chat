@@ -1820,6 +1820,7 @@ app.post("/instawebhook", async (c) => {
           time: new Date().toISOString()
         };
 
+
         if (existing) {
           // Append to message history
           const updatedMessages = [...existing.message_history, newMessage];
@@ -1848,6 +1849,48 @@ app.post("/instawebhook", async (c) => {
             console.error('❌ Insert error:', insertError);
             return c.json({ success: false, error: 'Failed to insert new message record' }, 500);
           }
+        }
+
+        // --- Create entry in leads table only if not present ---
+        let shouldInsertLead = true;
+        try {
+          const { data: existingLead, error: leadFetchError } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('instagram_username', senderId)
+            .maybeSingle();
+          if (leadFetchError) {
+            console.error('❌ Lead fetch error:', leadFetchError);
+            // If error is not 'no rows', skip insert for safety
+            if (leadFetchError.code !== 'PGRST116') shouldInsertLead = false;
+          }
+          if (existingLead && existingLead.id) {
+            shouldInsertLead = false;
+          }
+        } catch (e) {
+          console.error('❌ Lead fetch exception:', e);
+          shouldInsertLead = false;
+        }
+
+        // If not present, insert; otherwise, skip
+        if (shouldInsertLead) {
+          const leadPayload = {
+            name: senderId ? `Instagram User ${senderId}` : 'Instagram User',
+            status: 'New',
+            source: 'Instagram',
+            instagram_username: senderId,
+            notes: text || null,
+          };
+          const { error: leadInsertError } = await supabase
+            .from('leads')
+            .insert([leadPayload]);
+          if (leadInsertError) {
+            console.error('❌ Lead insert error:', leadInsertError);
+            // Do not fail the webhook, just log
+          }
+        } else {
+          // If not inserted, set a flag (could be in-memory or DB, here just log)
+          console.log('Lead already exists or will try again on next API call.');
         }
 
     // Save senderId + message to DB if needed
