@@ -218,7 +218,8 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
 
   const totalPages = Math.ceil(filteredLeads.length / pageSize);
 
-  const uniqueAssignees = [...new Set(leads.map(lead => lead.assignedTo))];
+  // Filter out falsy/empty assignees to avoid Select.Item with empty value
+  const uniqueAssignees = [...new Set(leads.map(lead => lead.assignedTo).filter(Boolean))];
 
   return (
     <div className="p-6 space-y-6">
