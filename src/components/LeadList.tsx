@@ -447,7 +447,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         <div>
                           <div className="font-medium">{lead.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {lead.source === 'Instagram' && lead.instagramUsername 
+                            {lead.source === 'Instagram' 
                               ? lead.instagramUsername 
                               : lead.email
                             }
@@ -487,9 +487,23 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => openWhatsApp(lead.phone, getWhatsAppMessage(lead))}
+                            onClick={() => {
+                              // Prefer internal app chat navigation when available (keeps user inside platform)
+                              if (onNavigateToChat) {
+                                onNavigateToChat('whatsapp', {
+                                  id: lead.id,
+                                  name: lead.name,
+                                  phone: lead.phone,
+                                  avatar: lead.avatar,
+                                });
+                                return;
+                              }
+
+                              // Fallback to opening external WhatsApp if no internal handler provided
+                              openWhatsApp(lead.phone, getWhatsAppMessage(lead));
+                            }}
                             className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            title="Send WhatsApp Message"
+                            title="Open WhatsApp Chat"
                           >
                             <Icons.MessageSquare className="w-4 h-4" />
                           </Button>
@@ -509,7 +523,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         )}
                         
                         {/* Instagram button for Instagram leads */}
-                        {lead.source === 'Instagram' && lead.instagramUsername && (
+                        {lead.source === 'Instagram' && (
                           <Button
                             variant="ghost"
                             size="sm"
