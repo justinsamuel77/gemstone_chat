@@ -608,7 +608,7 @@ app.get('/api/leads', async (c) => {
     const { data: leads, error } = await supabase
       .from('leads')
       .select('*')
-      .eq('user_id', user.id)
+      // .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -623,7 +623,38 @@ app.get('/api/leads', async (c) => {
       return c.json({ error: 'Failed to fetch leads' }, 500);
     }
 
-    return c.json({ leads: leads || [] });
+    // Normalize DB fields (snake_case) into frontend-friendly camelCase
+    const normalizedLeads = (leads || []).map((l) => {
+      // Safeguard required fields
+      const name = l.name || l.instagram_username || l.email || 'Unknown';
+
+      return {
+        id: l.id,
+        name,
+        email: l.email || '',
+        phone: l.phone || '',
+        status: l.status || 'New',
+        source: l.source || '',
+        assignedTo: l.assigned_to || l.assignedTo || '',
+        assigned_employee_id: l.assigned_employee_id || null,
+        lastContact: l.last_contact || l.lastContact || null,
+        value: l.value != null ? l.value : 0,
+        priority: l.priority || 'Medium',
+        createdAt: l.created_at || l.createdAt || null,
+        updatedAt: l.updated_at || l.updatedAt || null,
+        company: l.company || '',
+        dateOfBirth: l.date_of_birth || l.dateOfBirth || null,
+        marriageDate: l.marriage_date || l.marriageDate || null,
+        address: l.address || '',
+        netWeight: l.net_weight || l.netWeight || null,
+        estimatedDeliveryDate: l.estimated_delivery_date || l.estimatedDeliveryDate || null,
+        notes: l.notes || '',
+        instagramUsername: l.instagram_username || l.instagramUsername || null,
+        avatar: l.avatar || null
+      };
+    });
+
+    return c.json({ leads: normalizedLeads });
   } catch (error) {
     console.error('💥 Exception in leads endpoint:', error);
     return c.json({ error: 'Failed to fetch leads' }, 500);
