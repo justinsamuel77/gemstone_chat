@@ -1573,6 +1573,48 @@ app.post('/webhook', async (c) => {
           }
         }
 
+        // --- Create entry in leads table only if not present ---
+        let shouldInsertLead = true;
+        try {
+          const { data: existingLead, error: leadFetchError } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('phone', from)
+            .maybeSingle();
+          if (leadFetchError) {
+            console.error('❌ Lead fetch error:', leadFetchError);
+            // If error is not 'no rows', skip insert for safety
+            if (leadFetchError.code !== 'PGRST116') shouldInsertLead = false;
+          }
+          if (existingLead && existingLead.id) {
+            shouldInsertLead = false;
+          }
+        } catch (e) {
+          console.error('❌ Lead fetch exception:', e);
+          shouldInsertLead = false;
+        }
+
+        // If not present, insert; otherwise, skip
+        if (shouldInsertLead) {
+          const leadPayload = {
+            name: sender_name || `WhatsApp User ${from}`,
+            status: 'New',
+            source: 'WhatsApp',
+            phone: from,
+            notes: newMessage.message || null,
+          };
+          const { error: leadInsertError } = await supabase
+            .from('leads')
+            .insert([leadPayload]);
+          if (leadInsertError) {
+            console.error('❌ Lead insert error:', leadInsertError);
+            // Do not fail the webhook, just log
+          }
+        } else {
+          // If not inserted, set a flag (could be in-memory or DB, here just log)
+          console.log('Lead already exists or will try again on next API call.');
+        }
+
         return c.json({ success: true, savedImages: newMessage.images });
       }
     }
