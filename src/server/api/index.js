@@ -1988,7 +1988,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
     console.log("Images:", images.length);
 
     const textRes = await axios.post(
-      "https://graph.instagram.com/v21.0/me/messages",
+      "https://graph.instagram.com/v21.0/17841418132574829/messages",
       {
         message: JSON.stringify({
           text: message,
