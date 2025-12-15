@@ -168,10 +168,10 @@ Your jewelry order is progressing well! Here are the latest details:
 • Paid: ${orderDetail.payment.advancePaid}
 • Balance: ${orderDetail.payment.balanceDue}
 
-We'll attach the detailed report for your reference. Thank you for choosing GEMSTONE Fine Jewelry!
+We'll attach the detailed report for your reference. Thank you for choosing MADHAVAN JEWELLERS!
 
 Best regards,
-GEMSTONE Team`;
+MADHAVAN JEWELLERS Team`;
 
         // For now, we'll just open WhatsApp with the message
         // In a real implementation, you'd need to integrate with WhatsApp Business API
@@ -544,7 +544,7 @@ GEMSTONE Team`;
                   </Button>
                 )}
                 <Button 
-                  onClick={() => orderDetail.customer.phone && openWhatsApp(orderDetail.customer.phone, `Hello ${orderDetail.customer.name}! 👋\n\nYour order #${orderDetail.orderNumber} status has been updated to: ${orderDetail.orderStatus}\n\nWe'll keep you posted on any further progress.\n\nThank you for choosing GEMSTONE Fine Jewelry!`)}
+                  onClick={() => orderDetail.customer.phone && openWhatsApp(orderDetail.customer.phone, `Hello ${orderDetail.customer.name}! 👋\n\nYour order #${orderDetail.orderNumber} status has been updated to: ${orderDetail.orderStatus}\n\nWe'll keep you posted on any further progress.\n\nThank you for choosing MADHAVAN JEWELLERS!`)}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={!orderDetail.customer.phone}
                 >

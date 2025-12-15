@@ -158,7 +158,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
   };
 
   const getWhatsAppMessage = (lead: Lead) => {
-    return `Hello ${lead.name}! 👋\n\nThank you for your interest in GEMSTONE Fine Jewelry. We're here to help you find the perfect piece.\n\nHow can we assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`;
+    return `Hello ${lead.name}! 👋\n\nThank you for your interest in MADHAVAN JEWELLERS. We're here to help you find the perfect piece.\n\nHow can we assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`;
   };
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');

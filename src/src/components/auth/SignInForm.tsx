@@ -65,7 +65,7 @@ export function SignInForm({ onSuccess, onSwitchToSignUp }: SignInFormProps) {
       <div className="text-center space-y-2">
         <h1 className="text-2xl">Welcome Back</h1>
         <p className="text-muted-foreground">
-          Sign in to your GEMSTONE account
+          Sign in to your MADHAVAN JEWELLERS account
         </p>
       </div>
 

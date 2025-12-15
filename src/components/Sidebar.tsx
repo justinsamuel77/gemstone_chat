@@ -124,13 +124,13 @@ export function Sidebar({
               💎
             </span>
           </div>
-          <span className="text-lg font-semibold">
-            GEMSTONE
+          <span className="text-md font-semibold">
+            MADHAVAN JEWELLERS
           </span>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
+        {/* <p className="text-xs text-gray-400 mt-1">
           Fine Jewelry
-        </p>
+        </p> */}
       </div>
 
       {/* User Greeting */}

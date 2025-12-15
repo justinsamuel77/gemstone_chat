@@ -10,6 +10,7 @@ import { supabase } from './utils/supabase/client';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { TermsPage } from './src/components/auth/TermsPage';
 import { PrivacyPage } from './src/components/auth/PrivacyPage';
+import NotFound from './components/NotFound';
 
 interface User {
   id: string;
@@ -181,6 +182,8 @@ export default function App() {
           {/* Public pages for Meta verification */}
           <Route path="/terms-and-conditions" element={<TermsPage />} />
           <Route path="/privacy-policy" element={<PrivacyPage />} />
+          {/* Fallback 404 route */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </ToastProvider>
     </Router>
@@ -250,8 +253,8 @@ function AppContent({
                   <span className="text-white font-bold text-xl">💎</span>
                 </div>
                 <div className="text-left">
-                  <h1 className="text-white text-2xl font-bold">GEMSTONE</h1>
-                  <p className="text-white/80 text-sm">Fine Jewelry</p>
+                  <h1 className="text-white text-2xl font-bold">MADHAVAN JEWELLERS</h1>
+                  {/* <p className="text-white/80 text-sm">Fine Jewelry</p> */}
                 </div>
               </div>
 

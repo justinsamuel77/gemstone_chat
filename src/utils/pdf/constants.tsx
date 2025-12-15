@@ -24,7 +24,7 @@ export const PDF_CONFIG = {
 };
 
 export const BRANDING = {
-  companyName: 'GEMSTONE',
+  companyName: 'MADHAVAN JEWELLERS',
   tagline: 'Fine Jewelry',
   icon: '💎'
 };

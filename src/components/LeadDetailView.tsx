@@ -151,7 +151,7 @@ export function LeadDetailView({ leadId, leads, onBack, onEditLead, onConvertToO
       case 'follow-up':
         return `Hello ${name}! 👋\n\nI hope you're doing well. I wanted to follow up regarding your interest in ${lead.company}.\n\nWe have some exciting updates and would love to share them with you. When would be a good time to discuss your jewelry needs?\n\nLooking forward to hearing from you!\n\nBest regards,\nGEMSTONE Fine Jewelry`;
       default:
-        return `Hello ${name}! 👋\n\nThank you for your interest in GEMSTONE Fine Jewelry. We're here to help you find the perfect piece.\n\nHow can we assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`;
+        return `Hello ${name}! 👋\n\nThank you for your interest in MADHAVAN JEWELLERS. We're here to help you find the perfect piece.\n\nHow can we assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`;
     }
   };
 

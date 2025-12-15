@@ -48,7 +48,7 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
       
       toast({
         title: 'Account created!',
-        description: 'Welcome to GEMSTONE. You have been signed in automatically.'
+        description: 'Welcome to MADHAVAN JEWELLERS. You have been signed in automatically.'
       });
 
       onSuccess(response.user, response.access_token);
@@ -69,7 +69,7 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
       <div className="text-center space-y-2">
         <h1 className="text-2xl">Create Account</h1>
         <p className="text-muted-foreground">
-          Join GEMSTONE Fine Jewelry
+          Join MADHAVAN JEWELLERS
         </p>
       </div>
 

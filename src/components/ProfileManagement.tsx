@@ -483,7 +483,7 @@ export function ProfileManagement({ user, onUserUpdate }: ProfileManagementProps
                       value={profileData.company}
                       onChange={handleInputChange}
                       disabled={!isEditing}
-                      placeholder="GEMSTONE Fine Jewelry"
+                      placeholder="MADHAVAN JEWELLERS"
                     />
                   </div>
 

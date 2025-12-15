@@ -165,8 +165,8 @@ function AppContent({
                   <span className="text-white text-xl">💎</span>
                 </div>
                 <div className="text-left">
-                  <h1 className="text-white text-2xl">GEMSTONE</h1>
-                  <p className="text-white/80 text-sm">Fine Jewelry</p>
+                  <h1 className="text-white text-2xl">MADHAVAN JEWELLERS</h1>
+                  {/* <p className="text-white/80 text-sm">Fine Jewelry</p> */}
                 </div>
               </div>
               

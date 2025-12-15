@@ -77,8 +77,8 @@ export function Dashboard({ user, onLogout, onUserUpdate }: DashboardProps) {
               <span className="text-primary-foreground text-sm">💎</span>
             </div>
             <div>
-              <h1 className="text-lg">GEMSTONE</h1>
-              <p className="text-xs text-muted-foreground">Fine Jewelry CRM</p>
+              <h1 className="text-lg">MADHAVAN JEWELLERS</h1>
+              {/* <p className="text-xs text-muted-foreground">Fine Jewelry CRM</p> */}
             </div>
           </div>
           

@@ -342,7 +342,7 @@ export function AddOrderForm({ onBack, onSubmit }: AddOrderFormProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="gemstone">Gemstone</Label>
+                <Label htmlFor="gemstone">MADHAVAN JEWELLERS</Label>
                 <Input
                   id="gemstone"
                   value={formData.gemstone}
