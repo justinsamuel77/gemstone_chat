@@ -1777,7 +1777,7 @@ app.get('/api/instagram', async (c) => {
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const { data: instagrammessages, error } = await supabase
       .from('instagram')
       .select('*')
@@ -1787,10 +1787,10 @@ app.get('/api/instagram', async (c) => {
     if (error) {
       console.error('❌ Database error fetching leads:', error);
       if (error.code === '42P01') {
-        return c.json({ 
-          instagrammessages: [], 
+        return c.json({
+          instagrammessages: [],
           warning: 'Database tables not set up. Please run database setup.',
-          tableExists: false 
+          tableExists: false
         });
       }
       return c.json({ error: 'Failed to fetch instagram messages' }, 500);
@@ -1850,121 +1850,121 @@ app.post("/instawebhook", async (c) => {
     const TWO_MINUTES = 1 * 60 * 1000;
 
     if (timestamp) {
-    const now = Date.now();
-    const diff = now - timestamp;
+      const now = Date.now();
+      const diff = now - timestamp;
 
-    if (diff > TWO_MINUTES) {
-      // Convert timestamp to IST (+5:30)
-      const istTime = timestamp + (5.5 * 60 * 60 * 1000);
-      console.log('Time fail')
-      return c.json({
-        status: "invalid-event",
-        time: istTime
-      });
+      if (diff > TWO_MINUTES) {
+        // Convert timestamp to IST (+5:30)
+        const istTime = timestamp + (5.5 * 60 * 60 * 1000);
+        console.log('Time fail')
+        return c.json({
+          status: "invalid-event",
+          time: istTime
+        });
+      }
     }
-   }
 
     const senderId = messaging.sender?.id;
     const text =
       messaging.message?.text ??
-      messaging.message?.message ?? 
+      messaging.message?.message ??
       null;
-      
+
 
     console.log("Sender PSID:", senderId);
     console.log("Received Message:", text);
 
-     // Step 1: Fetch existing record
-        const { data: existing, error: fetchError } = await supabase
-          .from('instagram')
-          .select('psid, message_history')
-          .eq('psid', senderId)
-          .single();
+    // Step 1: Fetch existing record
+    const { data: existing, error: fetchError } = await supabase
+      .from('instagram')
+      .select('psid, message_history')
+      .eq('psid', senderId)
+      .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error('❌ Fetch error:', fetchError);
-          return c.json({ success: false, error: 'Failed to fetch existing record' }, 500);
-        }
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('❌ Fetch error:', fetchError);
+      return c.json({ success: false, error: 'Failed to fetch existing record' }, 500);
+    }
 
-        const newMessage = {
-          type: 'Received',
-          message:text ,
-          images: [],
-          time: new Date().toISOString()
-        };
+    const newMessage = {
+      type: 'Received',
+      message: text,
+      images: [],
+      time: new Date().toISOString()
+    };
 
 
-        if (existing) {
-          // Append to message history
-          const updatedMessages = [...existing.message_history, newMessage];
-          const { error: updateError } = await supabase
-            .from('instagram')
-            .update({ message_history: updatedMessages })
-            .eq('psid', existing.psid);
+    if (existing) {
+      // Append to message history
+      const updatedMessages = [...existing.message_history, newMessage];
+      const { error: updateError } = await supabase
+        .from('instagram')
+        .update({ message_history: updatedMessages })
+        .eq('psid', existing.psid);
 
-          if (updateError) {
-            console.error('❌ Update error:', updateError);
-            return c.json({ success: false, error: 'Failed to update message history' }, 500);
-          }
-        } else {
-          // Insert new record
-          const insertPayload = {
-            psid: senderId,
-            message_history: [newMessage]
-          };
-          console.log('inserting new record')
+      if (updateError) {
+        console.error('❌ Update error:', updateError);
+        return c.json({ success: false, error: 'Failed to update message history' }, 500);
+      }
+    } else {
+      // Insert new record
+      const insertPayload = {
+        psid: senderId,
+        message_history: [newMessage]
+      };
+      console.log('inserting new record')
 
-          const { error: insertError } = await supabase
-            .from('instagram')
-            .insert([insertPayload]);
+      const { error: insertError } = await supabase
+        .from('instagram')
+        .insert([insertPayload]);
 
-          if (insertError) {
-            console.error('❌ Insert error:', insertError);
-            return c.json({ success: false, error: 'Failed to insert new message record' }, 500);
-          }
-        }
+      if (insertError) {
+        console.error('❌ Insert error:', insertError);
+        return c.json({ success: false, error: 'Failed to insert new message record' }, 500);
+      }
+    }
 
-        // --- Create entry in leads table only if not present ---
-        let shouldInsertLead = true;
-        try {
-          const { data: existingLead, error: leadFetchError } = await supabase
-            .from('leads')
-            .select('id')
-            .eq('instagram_username', senderId)
-            .maybeSingle();
-          if (leadFetchError) {
-            console.error('❌ Lead fetch error:', leadFetchError);
-            // If error is not 'no rows', skip insert for safety
-            if (leadFetchError.code !== 'PGRST116') shouldInsertLead = false;
-          }
-          if (existingLead && existingLead.id) {
-            shouldInsertLead = false;
-          }
-        } catch (e) {
-          console.error('❌ Lead fetch exception:', e);
-          shouldInsertLead = false;
-        }
+    // --- Create entry in leads table only if not present ---
+    let shouldInsertLead = true;
+    try {
+      const { data: existingLead, error: leadFetchError } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('instagram_username', senderId)
+        .maybeSingle();
+      if (leadFetchError) {
+        console.error('❌ Lead fetch error:', leadFetchError);
+        // If error is not 'no rows', skip insert for safety
+        if (leadFetchError.code !== 'PGRST116') shouldInsertLead = false;
+      }
+      if (existingLead && existingLead.id) {
+        shouldInsertLead = false;
+      }
+    } catch (e) {
+      console.error('❌ Lead fetch exception:', e);
+      shouldInsertLead = false;
+    }
 
-        // If not present, insert; otherwise, skip
-        if (shouldInsertLead) {
-          const leadPayload = {
-            name: senderId ? `Instagram User ${senderId}` : 'Instagram User',
-            status: 'New',
-            source: 'Instagram',
-            instagram_username: senderId,
-            notes: text || null,
-          };
-          const { error: leadInsertError } = await supabase
-            .from('leads')
-            .insert([leadPayload]);
-          if (leadInsertError) {
-            console.error('❌ Lead insert error:', leadInsertError);
-            // Do not fail the webhook, just log
-          }
-        } else {
-          // If not inserted, set a flag (could be in-memory or DB, here just log)
-          console.log('Lead already exists or will try again on next API call.');
-        }
+    // If not present, insert; otherwise, skip
+    if (shouldInsertLead) {
+      const leadPayload = {
+        name: senderId ? `Instagram User ${senderId}` : 'Instagram User',
+        status: 'New',
+        source: 'Instagram',
+        instagram_username: senderId,
+        notes: text || null,
+      };
+      const { error: leadInsertError } = await supabase
+        .from('leads')
+        .insert([leadPayload]);
+      if (leadInsertError) {
+        console.error('❌ Lead insert error:', leadInsertError);
+        // Do not fail the webhook, just log
+      }
+    } else {
+      // If not inserted, set a flag (could be in-memory or DB, here just log)
+      console.log('Lead already exists or will try again on next API call.');
+    }
 
     // Save senderId + message to DB if needed
     // await saveIncomingMessage(senderId, text);
@@ -1982,7 +1982,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
     if (!user) return c.json({ error: "Unauthorized" }, 401);
 
     const body = await c.req.json();
-    const { psid,message, images = [] } = body;
+    const { psid, message, images = [] } = body;
 
     console.log("Psid :", psid);
     console.log("Images:", images.length);
@@ -1991,10 +1991,10 @@ app.post("/api/sendinstagramMessage", async (c) => {
       "https://graph.instagram.com/v21.0/me/messages",
       {
         message: JSON.stringify({
-          text: message, 
+          text: message,
         }),
         recipient: JSON.stringify({
-          id: psid 
+          id: psid
         }),
       },
       {
@@ -2107,7 +2107,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
     return c.json({ success: true, savedPaths }, 200);
   } catch (err) {
     console.error("❌ Error sending message:", err?.response?.data || err.message);
-    return c.json({ success: false, error: "Failed to send message" }, 500);
+    return c.json({ success: false, error: err?.response?.data || err.message }, 500);
   }
 });
 
