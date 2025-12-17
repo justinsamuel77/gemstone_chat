@@ -47,16 +47,16 @@ interface InstagramContact {
 }
 
 interface InstagramChat {
-  psid:number;
-  user_name:String;
-  message_history:InstagramMessage [] | []
+  psid: number;
+  user_name: String;
+  message_history: InstagramMessage[] | []
 }
 
 interface InstagramMessage {
-  images:string [] | [];
-  message:string;
-  time:string | any;
-  type:string;
+  images: string[] | [];
+  message: string;
+  time: string | any;
+  type: string;
 }
 
 interface InstagramChatProps {
@@ -76,9 +76,9 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading,setLoading] = useState(false)
-  const { instagrammessage,isLoading,sendInstagramMessage } = useDataManager();
-  console.log('instagram messagesss is',instagrammessage,selectedContact)
+  const [loading, setLoading] = useState(false)
+  const { instagrammessage, isLoading, sendInstagramMessage } = useDataManager();
+  console.log('instagram messagesss is', instagrammessage, selectedContact)
 
   // Mock Instagram contacts
   const [contacts] = useState<InstagramContact[]>([
@@ -152,7 +152,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
   //       c.id === selectedContactInfo.id || 
   //       c.username === selectedContactInfo.username
   //     );
-      
+
   //     if (existingContact) {
   //       setSelectedContact(existingContact);
   //     } else {
@@ -224,49 +224,49 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (psid:number) => {
-    console.log('psid is',psid)
+  const handleSendMessage = async (psid: number) => {
+    console.log('psid is', psid)
     if (!message.trim() || !selectedContact) return;
 
     try {
-        const Message = {
-           psid,
-           message:message,
-          //  images:imagesBase64
+      const Message = {
+        psid,
+        message: message,
+        //  images:imagesBase64
 
-        };
-  
-        const result = await sendInstagramMessage(Message);
+      };
 
-        // setMessages(prev => [...prev, Message]);
-        setMessage('');
-        
-        if (result.success) {
-           setSelectedContact((preVal) => {
-        if (!preVal) return preVal;
+      const result = await sendInstagramMessage(Message);
 
-        const updatedHistory = Array.isArray(preVal.message_history)
-          ? [...preVal.message_history]
-          : [];
+      // setMessages(prev => [...prev, Message]);
+      setMessage('');
 
-        updatedHistory.push({
-          type:"Sent",
-          message: message,
-          images:result.data.savedPaths,
-          time: new Date().toISOString()
+      if (result.success) {
+        setSelectedContact((preVal) => {
+          if (!preVal) return preVal;
+
+          const updatedHistory = Array.isArray(preVal.message_history)
+            ? [...preVal.message_history]
+            : [];
+
+          updatedHistory.push({
+            type: "Sent",
+            message: message,
+            images: result.data.savedPaths,
+            time: new Date().toISOString()
+          });
+
+          return {
+            ...preVal,
+            message_history: updatedHistory
+          };
         });
-
-        return {
-          ...preVal,
-          message_history: updatedHistory
-        };
-      });
-      setMessage("")
-      // set_images([])
-      setLoading(false)
-    }
-      } catch (error) {
-        console.error('Error sending message', error);
+        setMessage("")
+        // set_images([])
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Error sending message', error);
 
     };
 
@@ -310,11 +310,45 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
   // };
 
   const getInitials = (name: String) => {
-    if(name){
+    if (name) {
       return name.split(' ').map(n => n[0]).join('').toUpperCase();
     } else {
       return " "
     }
+  };
+
+  const formatLastSeen = (isoString: string): string => {
+    const timestamp = new Date(isoString);
+    const now = new Date();
+
+    const isSameDay = (d1: Date, d2: Date) =>
+      d1.getDate() === d2.getDate() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getFullYear() === d2.getFullYear();
+
+    const isYesterday = (d: Date, reference: Date) => {
+      const yesterday = new Date(reference);
+      yesterday.setDate(reference.getDate() - 1);
+      return isSameDay(d, yesterday);
+    };
+
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+
+    if (isSameDay(timestamp, now)) {
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      return `${hours}h ago`;
+    }
+
+    if (isYesterday(timestamp, now)) {
+      return 'Yesterday';
+    }
+
+    const day = timestamp.getDate().toString().padStart(2, '0');
+    const month = (timestamp.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}/${month}`;
   };
 
   const formatTime = (timestamp: Date) => {
@@ -331,10 +365,10 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
   };
 
   const formatLastMessageTime = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return timestamp.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
 
@@ -343,7 +377,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     contact.fullName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  console.log('selected contact',selectedContact)
+  console.log('selected contact', selectedContact)
 
   return (
     <div className="h-screen flex bg-white">
@@ -367,7 +401,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
               <Plus className="w-5 h-5" />
             </Button>
           </div>
-          
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -387,16 +421,15 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
               <div
                 key={contact.id}
                 onClick={() => setSelectedContact(contact)}
-                className={`p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  contact?.psid === selectedContact?.psid ? 'bg-gray-50' : ''
-                }`}
+                className={`flex items-center justify-between p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${contact?.psid === selectedContact?.psid ? 'bg-gray-50' : ''
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Avatar className="w-14 h-14">
                       <AvatarImage src={contact?.avatar} />
                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white">
-                        {getInitials(contact?.user_name ?? 'Not Available')}
+                        {getInitials(contact?.user_name ?? "Instagram User")}
                       </AvatarFallback>
                     </Avatar>
                     {/* {contact.isOnline && (
@@ -404,9 +437,9 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                     )} */}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center">
                       <div className="flex items-center gap-1">
-                        <h3 className="font-medium text-gray-900 truncate">{contact?.user_name}</h3>
+                        <h3 className="font-medium text-gray-900 truncate">{contact?.user_name ?? `User #${contact?.id}`}</h3>
                         {/* {contact.isVerified && (
                           <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -415,23 +448,21 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                           </div>
                         )} */}
                       </div>
-                      <div className="flex items-center gap-1">
-                        {/* {contact.lastMessage && (
-                          <span className="text-xs text-gray-500">
-                            {formatLastMessageTime(contact.lastMessage.timestamp)}
-                          </span>
-                        )} */}
-                        {/* {contact.unreadCount > 0 && (
-                          <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center ml-1">
-                            {contact.unreadCount}
-                          </Badge>
-                        )} */}
-                      </div>
                     </div>
                     {/* <p className="text-gray-600 text-sm truncate mt-1">
                       {contact.lastMessage?.type === 'like' ? '❤️' : contact.lastMessage?.text}
                     </p> */}
                   </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-500">
+                    {contact?.message_history?.length ? formatLastSeen(contact.message_history[contact.message_history.length - 1].time) : ''}
+                  </span>
+                  {/* {contact.unreadCount > 0 && (
+                    <Badge className="bg-red-500 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center ml-1">
+                      {contact.unreadCount}
+                    </Badge>
+                  )} */}
                 </div>
               </div>
             ))}
@@ -451,7 +482,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                     <Avatar className="w-8 h-8">
                       <AvatarImage src={selectedContact?.avatar} />
                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
-                        {getInitials(selectedContact?.user_name ?? "Not Available")}
+                        {getInitials(selectedContact?.user_name ?? "Instagram User")}
                       </AvatarFallback>
                     </Avatar>
                     {/* {selectedContact.isOnline && (
@@ -460,7 +491,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                   </div>
                   <div>
                     <div className="flex items-center gap-1">
-                      <h3 className="font-medium text-gray-900">{selectedContact.user_name ?? "Not found"}</h3>
+                      <h3 className="font-medium text-gray-900">{selectedContact.user_name ?? `User #${selectedContact?.id}`}</h3>
                       {/* {selectedContact.isVerified && (
                         <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                           <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -491,30 +522,32 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
             {/* Messages Area */}
             <div className="flex-1 p-4 overflow-y-auto bg-white">
               <div className="space-y-4">
-                {selectedContact.message_history?.map((msg,index) => (
+                {selectedContact.message_history?.map((msg, index) => (
                   <div
                     key={index}
-                    className={`flex ${msg.type ==='Sent' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${msg.type === 'Sent' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md ${msg.type ==='Sent' ? 'order-2' : 'order-1'}`}>
+                    <div className={`max-w-xs lg:max-w-md ${msg.type === 'Sent' ? 'order-2' : 'order-1'}`}>
                       {/* {msg.type === 'like' ? (
                         <div className="text-6xl">❤️</div>
                       ) : ( */}
-                        <div
-                          className={`px-4 py-2 rounded-2xl relative group ${
-                            msg.type === 'Recieved'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-900'
+                      <div
+                        className={`px-4 py-2 rounded-2xl relative group ${msg.type === 'Recieved'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-900'
                           }`}
-                          // onDoubleClick={() => handleLikeMessage(msg.id)}
-                        >
-                          <p className="text-sm">{msg?.message}</p>
-                          {/* {msg.liked && (
+                      // onDoubleClick={() => handleLikeMessage(msg.id)}
+                      >
+                        <p className="text-sm">{msg?.message}</p>
+                        <span className="text-xs text-gray-500">
+                          {formatLastSeen(msg.time)}
+                        </span>
+                        {/* {msg.liked && (
                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                               <Heart className="w-2.5 h-2.5 text-white fill-current" />
                             </div>
                           )} */}
-                        </div>
+                      </div>
                       {/* ) */}
                       {/* } */}
 
@@ -526,7 +559,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Typing Indicator */}
                 {isTyping && (
                   <div className="flex justify-start">
@@ -541,7 +574,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -581,7 +614,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                 </div>
                 {message.trim() ? (
                   <Button
-                    onClick={()=>handleSendMessage(selectedContact?.psid)}
+                    onClick={() => handleSendMessage(selectedContact?.psid)}
                     variant="ghost"
                     size="sm"
                     className="text-blue-500 hover:bg-blue-50 p-2 h-auto font-medium"
