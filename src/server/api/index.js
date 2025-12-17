@@ -1999,7 +1999,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
       },
       {
         headers: {
-          Authorization: `Bearer EAASnIIcYr8kBQAJgo0Ut4afLdZBZAXnntcEAIRfpdMM381SzepbEJPSA6IoLOqzYdIJc4sZBZAlL7gSmpBbwVj5Qys6gPiQDoEWrRt2YAk1qKShyuV4gz1ZCwVGZCZBkXsgHPreASmz3LpYDFwwl5RXZBxsw5bLd4lnCWneNJsysEq4cg3r0ZA6wLog1N8VuAxyLBgAZDZD`,
+          Authorization: `Bearer IGAAUCHwkjhZChBZAGJ0TWhwNzNlMDFLU1BObC03YTN3NjFwNy16clpvSk1ZAanF0QjB1SGlVdnpoR1drOS15RGVNNjlQQzZArMHdfRlRoLUYtRUwtQTNudXMyOW44ZAVp3Q1lMNVB4M1VKR2tMQVJDMHRlaGN6NlVHRnhvNDZADcGVPWQZDZD`,
           "Content-Type": "application/json",
         },
       }
