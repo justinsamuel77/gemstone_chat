@@ -105,7 +105,7 @@ export function SigninForm({ onFlowChange, onLoginSuccess }: SigninFormProps) {
       )}
 
       {/* Social Signin */}
-      <SocialSigninButtons />
+      {/* <SocialSigninButtons /> */}
       
       <div className="relative">
         <div className="absolute inset-0 flex items-center">

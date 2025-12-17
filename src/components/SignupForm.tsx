@@ -188,7 +188,7 @@ export function SignupForm({ onFlowChange }: SignupFormProps) {
       {/* Social Signin - Only show on first step */}
       {currentStep === 1 && (
         <>
-          <SocialSigninButtons />
+          {/* <SocialSigninButtons /> */}
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
