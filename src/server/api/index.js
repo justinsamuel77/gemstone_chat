@@ -1796,7 +1796,36 @@ app.get('/api/instagram', async (c) => {
       return c.json({ error: 'Failed to fetch instagram messages' }, 500);
     }
 
-    return c.json({ instagrammessages: instagrammessages || [] });
+    // Deduplicate records by `psid` by merging message_history when duplicates exist
+    const merged = {};
+    (instagrammessages || []).forEach((rec) => {
+      const key = rec.psid != null ? String(rec.psid) : String(rec.id);
+      if (!merged[key]) {
+        // clone to avoid mutating original
+        merged[key] = {
+          ...rec,
+          message_history: Array.isArray(rec.message_history) ? [...rec.message_history] : []
+        };
+      } else {
+        // merge histories (keep chronological order by created_at later)
+        const existing = merged[key];
+        existing.message_history = existing.message_history.concat(Array.isArray(rec.message_history) ? rec.message_history : []);
+        // keep the most recent created_at and id
+        if (new Date(rec.created_at) > new Date(existing.created_at)) {
+          existing.created_at = rec.created_at;
+          existing.id = rec.id;
+        }
+      }
+    });
+
+    // Convert merged map to array and sort by created_at desc
+    const dedupedArray = Object.values(merged).map((r) => {
+      // sort each message_history oldest -> newest
+      r.message_history = (r.message_history || []).slice().sort((a, b) => new Date(a.time) - new Date(b.time));
+      return r;
+    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return c.json({ instagrammessages: dedupedArray });
   } catch (error) {
     console.error('💥 Exception in leads endpoint:', error);
     return c.json({ error: 'Failed to fetch instagram messages' }, 500);
@@ -1874,17 +1903,19 @@ app.post("/instawebhook", async (c) => {
     console.log("Sender PSID:", senderId);
     console.log("Received Message:", text);
 
-    // Step 1: Fetch existing record
-    const { data: existing, error: fetchError } = await supabase
+    // Step 1: Fetch existing records for this psid (may be duplicates)
+    const { data: existingRows, error: fetchError } = await supabase
       .from('instagram')
-      .select('psid, message_history')
+      .select('id, psid, message_history, created_at')
       .eq('psid', senderId)
-      .single();
+      .order('created_at', { ascending: false });
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('❌ Fetch error:', fetchError);
       return c.json({ success: false, error: 'Failed to fetch existing record' }, 500);
     }
+
+    const existing = Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
 
     const newMessage = {
       type: 'Received',
@@ -1895,16 +1926,43 @@ app.post("/instawebhook", async (c) => {
 
 
     if (existing) {
-      // Append to message history
-      const updatedMessages = [...existing.message_history, newMessage];
+      // Merge message histories from any duplicate rows into the latest record
+      const mergedHistory = [];
+      if (Array.isArray(existingRows) && existingRows.length > 0) {
+        // oldest-first order for history
+        const rowsAsc = existingRows.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        for (const r of rowsAsc) {
+          if (Array.isArray(r.message_history)) mergedHistory.push(...r.message_history);
+        }
+      }
+      // Append the new incoming message
+      mergedHistory.push(newMessage);
+
+      // Update the most recent record (existing) with merged history
       const { error: updateError } = await supabase
         .from('instagram')
-        .update({ message_history: updatedMessages })
-        .eq('psid', existing.psid);
+        .update({ message_history: mergedHistory })
+        .eq('id', existing.id);
 
       if (updateError) {
         console.error('❌ Update error:', updateError);
         return c.json({ success: false, error: 'Failed to update message history' }, 500);
+      }
+
+      // If there are duplicate older rows, remove them to avoid future duplication
+      if (Array.isArray(existingRows) && existingRows.length > 1) {
+        const idsToDelete = existingRows.slice(1).map(r => r.id).filter(Boolean);
+        if (idsToDelete.length > 0) {
+          try {
+            const { error: deleteError } = await supabase
+              .from('instagram')
+              .delete()
+              .in('id', idsToDelete);
+            if (deleteError) console.warn('⚠️ Failed to delete duplicate instagram rows:', deleteError);
+          } catch (delErr) {
+            console.warn('⚠️ Exception while deleting duplicates:', delErr);
+          }
+        }
       }
     } else {
       // Insert new record
@@ -1912,7 +1970,6 @@ app.post("/instawebhook", async (c) => {
         psid: senderId,
         message_history: [newMessage]
       };
-      console.log('inserting new record')
 
       const { error: insertError } = await supabase
         .from('instagram')
