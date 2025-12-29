@@ -120,9 +120,7 @@ export function Sidebar({
       <div className="p-6 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-            <span className="text-sm font-bold text-primary-foreground">
-              💎
-            </span>
+            <img src="/whatsapp_images/madahvan_logo_1.jpg" alt="Logo" className="rounded-md" />
           </div>
           <span className="text-md font-semibold">
             MADHAVAN JEWELLERS
@@ -152,9 +150,9 @@ export function Sidebar({
             </div>
           </div>
           <div className="flex items-center flex-shrink-0">
-            <NotificationSystem 
-              leads={leads} 
-              orders={orders} 
+            <NotificationSystem
+              leads={leads}
+              orders={orders}
               onNotificationClick={onNotificationClick}
             />
           </div>
@@ -169,11 +167,10 @@ export function Sidebar({
               onClick={() =>
                 item.view ? onNavigate(item.view) : undefined
               }
-              className={`w-full flex items-center justify-between px-6 py-3 text-left hover:bg-gray-800 transition-colors ${
-                currentView === item.view
-                  ? "border-r-4 border-[#C6E543] bg-gray-800/80"
-                  : ""
-              }`}
+              className={`w-full flex items-center justify-between px-6 py-3 text-left hover:bg-gray-800 transition-colors ${currentView === item.view
+                ? "border-r-4 border-[#C6E543] bg-gray-800/80"
+                : ""
+                }`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -203,11 +200,10 @@ export function Sidebar({
                     <button
                       key={subItem.name}
                       onClick={() => onNavigate(subItem.view)}
-                      className={`w-full flex items-center px-12 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${
-                        currentView === subItem.view
-                          ? "text-[#C6E543] bg-gray-700 border-r-2 border-[#C6E543]"
-                          : "text-gray-300"
-                      }`}
+                      className={`w-full flex items-center px-12 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${currentView === subItem.view
+                        ? "text-[#C6E543] bg-gray-700 border-r-2 border-[#C6E543]"
+                        : "text-gray-300"
+                        }`}
                     >
                       <span className="truncate">{subItem.name}</span>
                     </button>

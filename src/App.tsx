@@ -250,7 +250,8 @@ function AppContent({
               {/* Logo */}
               <div className="flex items-center justify-center gap-3 mb-8">
                 <div className="w-12 h-12 bg-primary-foreground/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/30">
-                  <span className="text-white font-bold text-xl">💎</span>
+                  {/* <span className="text-white font-bold text-xl">💎</span> */}
+                  <img src="/whatsapp_images/madahvan_logo_1.jpg" alt="Logo" className="rounded-lg" />
                 </div>
                 <div className="text-left">
                   <h1 className="text-white text-2xl font-bold">MADHAVAN JEWELLERS</h1>
