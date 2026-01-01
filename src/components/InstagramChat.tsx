@@ -70,9 +70,17 @@ interface InstagramChatProps {
 }
 
 export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProps) {
+
+  const fileInputRef = useRef(null);
+  
+  const handleFileClick = () => {
+      fileInputRef.current?.click();
+    }
+
   const [selectedContact, setSelectedContact] = useState<InstagramChat | null>(null);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<InstagramMessage[]>([]);
+  const [images, set_images] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -228,12 +236,23 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     console.log('psid is', psid)
     if (!message.trim() || !selectedContact) return;
 
+    const imagesBase64 = await Promise.all(
+        images.map(async (url) => {
+          const blob = await fetch(url).then((res) => res.blob());
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          return base64; 
+        })
+      );
+
     try {
       const Message = {
         psid,
         message: message,
-        //  images:imagesBase64
-
+         images:imagesBase64
       };
 
       const result = await sendInstagramMessage(Message);
@@ -262,7 +281,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
           };
         });
         setMessage("")
-        // set_images([])
+        set_images([])
         setLoading(false)
       }
     } catch (error) {
@@ -378,6 +397,26 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
   );
 
   console.log('selected contact', selectedContact)
+
+  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        const newImages = Array.from(e.target.files).map((file) =>
+          URL.createObjectURL(file)
+        );
+  
+        set_images((prevImages) => [...prevImages,...newImages]);
+      }
+    };
+  
+    const handleRemoveImage = (imageUrl: string) => {
+   
+        set_images((prevImages) =>
+          prevImages.filter((image) => image !== imageUrl)
+        );
+        
+        URL.revokeObjectURL(imageUrl);
+    };
+
 
   return (
     <div className="h-screen flex bg-white">
@@ -560,6 +599,27 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                   </div>
                 ))}
 
+                {(images && images.length > 0) && (
+                <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative flex-shrink-0">
+                      <img
+                        src={image}
+                        alt={`Uploaded ${index}`}
+                        className="w-24 h-24 object-center rounded-md border p-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(image)}
+                        className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full text-sm w-6 h-6 flex justify-center items-center shadow-md"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                )}
+
                 {/* Typing Indicator */}
                 {isTyping && (
                   <div className="flex justify-start">
@@ -582,9 +642,17 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
             {/* Message Input */}
             <div className="p-4 border-t border-gray-200">
               <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".png,.jpg"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={handleFileClick}
                   className="p-2 h-auto hover:bg-gray-100"
                 >
                   <Camera className="w-5 h-5" />
