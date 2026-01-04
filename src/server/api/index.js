@@ -1855,17 +1855,11 @@ app.post("/instawebhook", async (c) => {
   const body = await c.req.json();
   console.log("Webhook Body:", JSON.stringify(body, null, 2));
 
-  // Handle challenge verification (optional safety)
+  // Challenge (optional)
   const url = new URL(c.req.url);
   const challenge = url.searchParams.get("hub.challenge");
-  if (challenge) {
-    console.log('is challenge')
-    // return c.text(challenge)
-  };
+  if (challenge) return c.text(challenge);
 
-  // // ---- Instagram DM Event Parsing ----
-  // console.log('Body is',body)
-  // console.log('message is',body.entry[0].messaging)
   try {
     const entry = body.entry?.[0];
     const messaging = entry?.messaging?.[0];
@@ -1881,104 +1875,135 @@ app.post("/instawebhook", async (c) => {
     if (timestamp) {
       const now = Date.now();
       const diff = now - timestamp;
-
       if (diff > TWO_MINUTES) {
-        // Convert timestamp to IST (+5:30)
         const istTime = timestamp + (5.5 * 60 * 60 * 1000);
-        console.log('Time fail')
-        return c.json({
-          status: "invalid-event",
-          time: istTime
-        });
+        return c.json({ status: "invalid-event", time: istTime });
       }
     }
 
     const senderId = messaging.sender?.id;
-    const text =
+
+    let text =
       messaging.message?.text ??
       messaging.message?.message ??
       null;
 
-
-    console.log("Sender PSID:", senderId);
-    console.log("Received Message:", text);
-
-    // Step 1: Fetch existing records for this psid (may be duplicates)
-    const { data: existingRows, error: fetchError } = await supabase
-      .from('instagram')
-      .select('id, psid, message_history, created_at')
-      .eq('psid', senderId)
-      .order('created_at', { ascending: false });
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('❌ Fetch error:', fetchError);
-      return c.json({ success: false, error: 'Failed to fetch existing record' }, 500);
-    }
-
-    const existing = Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
-
     const newMessage = {
-      type: 'Received',
+      type: "Received",
       message: text,
       images: [],
-      time: new Date().toISOString()
+      time: new Date().toISOString(),
     };
 
-
-    if (existing) {
-      // Merge message histories from any duplicate rows into the latest record
-      const mergedHistory = [];
-      if (Array.isArray(existingRows) && existingRows.length > 0) {
-        // oldest-first order for history
-        const rowsAsc = existingRows.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        for (const r of rowsAsc) {
-          if (Array.isArray(r.message_history)) mergedHistory.push(...r.message_history);
-        }
-      }
-      // Append the new incoming message
-      mergedHistory.push(newMessage);
-
-      // Update the most recent record (existing) with merged history
-      const { error: updateError } = await supabase
-        .from('instagram')
-        .update({ message_history: mergedHistory })
-        .eq('id', existing.id);
-
-      if (updateError) {
-        console.error('❌ Update error:', updateError);
-        return c.json({ success: false, error: 'Failed to update message history' }, 500);
-      }
-
-      // If there are duplicate older rows, remove them to avoid future duplication
-      if (Array.isArray(existingRows) && existingRows.length > 1) {
-        const idsToDelete = existingRows.slice(1).map(r => r.id).filter(Boolean);
-        if (idsToDelete.length > 0) {
+    if (messaging.message?.attachments?.length) {
+      for (const att of messaging.message.attachments) {
+        if (att.type === "image" && att.payload?.url) {
           try {
-            const { error: deleteError } = await supabase
-              .from('instagram')
-              .delete()
-              .in('id', idsToDelete);
-            if (deleteError) console.warn('⚠️ Failed to delete duplicate instagram rows:', deleteError);
-          } catch (delErr) {
-            console.warn('⚠️ Exception while deleting duplicates:', delErr);
+            console.log("Image recieved");
+
+            const imgBuffer = await axios.get(att.payload.url, {
+              responseType: "arraybuffer",
+              headers: {
+                Authorization: `Bearer ${process.env.META_TOKEN}`,
+              }
+            });
+
+            const uploadPromise = new Promise((resolve, reject) => {
+              const stream = cloudinary.uploader.upload_stream(
+                {
+                  folder: "instagram_images",
+                  resource_type: "image",
+                },
+                (err, result) => {
+                  if (err) return reject(err);
+                  resolve(result.secure_url);
+                }
+              );
+
+              stream.end(Buffer.from(imgBuffer.data));
+            });
+
+            const imageUrl = await uploadPromise;
+            newMessage.images.push(imageUrl);
+            console.log("Uploaded to Cloudinary:", imageUrl);
+
+          } catch (imgErr) {
+            console.error("Image Upload Failed:", imgErr);
           }
         }
       }
-    } else {
-      // Insert new record
-      const insertPayload = {
-        psid: senderId,
-        message_history: [newMessage]
-      };
+    }
 
-      const { error: insertError } = await supabase
-        .from('instagram')
-        .insert([insertPayload]);
+    console.log("Sender:", senderId);
+    console.log("Text:", text);
+    console.log("Images:", newMessage.images);
 
-      if (insertError) {
-        console.error('❌ Insert error:', insertError);
-        return c.json({ success: false, error: 'Failed to insert new message record' }, 500);
+    const { data: existingRows, error: fetchError } = await supabase
+      .from("instagram")
+      .select("id, psid, message_history, created_at")
+      .eq("psid", senderId)
+      .order("created_at", { ascending: false });
+
+    if (fetchError && fetchError.code !== "PGRST116") {
+      console.error("❌ Fetch error:", fetchError);
+      return c.json({ success: false, error: "Failed to fetch" }, 500);
+    }
+
+    const existing =
+      Array.isArray(existingRows) && existingRows.length > 0
+        ? existingRows[0]
+        : null;
+
+    if (existing) {
+      const mergedHistory = [];
+
+      const rowsAsc = existingRows
+        ?.slice()
+        ?.sort(
+          (a, b) =>
+            new Date(a.created_at) - new Date(b.created_at)
+        );
+
+      for (const r of rowsAsc) {
+        if (Array.isArray(r.message_history))
+          mergedHistory.push(...r.message_history);
       }
+
+      mergedHistory.push(newMessage);
+
+      const { error: updateError } = await supabase
+        .from("instagram")
+        .update({ message_history: mergedHistory })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        return c.json(
+          { success: false, error: "Failed to update" },
+          500
+        );
+      }
+
+      if (existingRows.length > 1) {
+        const idsToDelete = existingRows
+          .slice(1)
+          .map((r) => r.id)
+          .filter(Boolean);
+
+        if (idsToDelete.length > 0) {
+          await supabase
+            .from("instagram")
+            .delete()
+            .in("id", idsToDelete);
+        }
+      }
+    } else {
+      await supabase.from("instagram").insert([
+        {
+          psid: senderId,
+          message_history: [newMessage],
+        },
+      ]);
     }
 
     // --- Create entry in leads table only if not present ---
