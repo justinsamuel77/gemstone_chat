@@ -1461,24 +1461,7 @@ cloudinary.config({
 app.post('/webhook', async (c) => {
   console.log('Webhook called');
   try {
-    // Log incoming headers and remote IP for debugging (useful on hosted platforms)
-    try {
-      const headersObj = Object.fromEntries(c.req.headers || []);
-      const forwarded = headersObj['x-forwarded-for'] || headersObj['X-Forwarded-For'];
-      const remoteIp = forwarded || (c.req.raw && c.req.raw.socket && c.req.raw.socket.remoteAddress) || 'unknown';
-      console.log('Webhook incoming headers:', headersObj);
-      console.log('Webhook remote IP:', remoteIp);
-    } catch (hdrErr) {
-      console.log('Failed to log headers/remote IP:', hdrErr);
-    }
     const body = await c.req.json();
-
-    // Debug: log full incoming webhook body to help trace why Meta callbacks may not be arriving
-    try {
-      console.log('Webhook body:', JSON.stringify(body, null, 2));
-    } catch (e) {
-      console.log('Webhook body (unserializable):', body);
-    }
 
     if (body.object) {
       const entry = body.entry?.[0];
@@ -1636,16 +1619,10 @@ app.post('/webhook', async (c) => {
       }
     }
 
-    return c.json({ success: true });
+    return c.json({ success: false, error: 'Invalid webhook payload' }, 400);
   } catch (err) {
-    console.error('Webhook POST error:', err?.stack || err);
-    const isProd = process.env.NODE_ENV === 'production';
-    const errorResponse = {
-      success: false,
-      error: isProd ? 'Webhook handler error' : (err?.message || String(err))
-    };
-    if (!isProd) errorResponse.stack = err?.stack;
-    return c.json(errorResponse, 500);
+    console.error('Webhook POST error:', err);
+    return c.json({ success: false, error: 'Webhook handler error' }, 500);
   }
 });
 
