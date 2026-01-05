@@ -1643,7 +1643,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
 
     if (message && message.trim() !== "") {
       const textRes = await axios.post(
-        "https://graph.facebook.com/v22.0/782872091578144/messages",
+        "https://graph.facebook.com/v22.0/891880160681645/messages",
         {
           messaging_product: "whatsapp",
           to: phone_no,
@@ -1679,7 +1679,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
           formData.append('messaging_product', 'whatsapp');
 
           const uploadResFB = await axios.post(
-            'https://graph.facebook.com/v22.0/782872091578144/media',
+            'https://graph.facebook.com/v22.0/891880160681645/media',
             formData,
             {
               headers: {
@@ -1692,7 +1692,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
           const mediaId = uploadResFB.data.id;
 
           await axios.post(
-            'https://graph.facebook.com/v22.0/782872091578144/messages',
+            'https://graph.facebook.com/v22.0/891880160681645/messages',
             {
               messaging_product: 'whatsapp',
               to: phone_no,
@@ -2109,7 +2109,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
       formData.append("messaging_product", "instagran");
 
       const uploadRes = await axios.post(
-        "https://graph.facebook.com/v22.0/782872091578144/media",
+        "https://graph.facebook.com/v22.0/891880160681645/media",
         formData,
         {
           headers: {
@@ -2123,7 +2123,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
 
       // Send image message using the uploaded media ID
       await axios.post(
-        "https://graph.facebook.com/v22.0/782872091578144/messages",
+        "https://graph.facebook.com/v22.0/891880160681645/messages",
         {
           messaging_product: "whatsapp",
           to: phone_no,
