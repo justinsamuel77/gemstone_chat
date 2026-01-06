@@ -18,7 +18,8 @@ import {
   MessageCircle,
   Camera,
   Mic,
-  Plus
+  X,
+  Plus,
 } from 'lucide-react';
 import {
   DropdownMenu,
