@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -19,6 +19,7 @@ import {
   Camera,
   Mic,
   X,
+  Loader2,
   Plus,
 } from 'lucide-react';
 import {
@@ -233,33 +234,39 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (psid: number) => {
-    console.log('psid is', psid)
-    if (!message.trim() || !selectedContact) return;
+  const [pendingText, setPendingText] = useState<string | null>(null);
 
-    const imagesBase64 = await Promise.all(
-        images.map(async (url) => {
-          const blob = await fetch(url).then((res) => res.blob());
-          const base64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-          return base64; 
-        })
-      );
+  const handleSendMessage = async ({ psid, imagesOverride, overrideMessage }: { psid: number | undefined; imagesOverride?: any[]; overrideMessage?: string }) => {
+    if (!psid || !selectedContact) return;
+    const textToSend = overrideMessage ?? message;
+    if ((!textToSend.trim() && !(imagesOverride && imagesOverride.length)) ) return;
+    setLoading(true);
+
+    const imagesBase64 = imagesOverride
+      ? imagesOverride
+      : await Promise.all(
+          images.map(async (url) => {
+            const blob = await fetch(url).then((res) => res.blob());
+            const base64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            return base64;
+          })
+        );
 
     try {
       const Message = {
         psid,
-        message: message,
-         images:imagesBase64
+        message: textToSend,
+        images: imagesBase64,
       };
 
       const result = await sendInstagramMessage(Message);
 
-      // setMessages(prev => [...prev, Message]);
-      setMessage('');
+      // only clear the input if we sent the active message
+      if (!overrideMessage) setMessage('');
 
       if (result.success) {
         setSelectedContact((preVal) => {
@@ -270,25 +277,26 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
             : [];
 
           updatedHistory.push({
-            type: "Sent",
-            message: message,
-            images: result.data.savedPaths,
-            time: new Date().toISOString()
+            type: 'Sent',
+            message: textToSend,
+            images: result.data.savedPaths || result.data.uploadedImages || [],
+            time: new Date().toISOString(),
           });
 
           return {
             ...preVal,
-            message_history: updatedHistory
+            message_history: updatedHistory,
           };
         });
-        setMessage("")
-        set_images([])
-        setLoading(false)
+
+        set_images([]);
       }
     } catch (error) {
       console.error('Error sending message', error);
-
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
     // Simulate typing and response
     // setTimeout(() => {
@@ -306,7 +314,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     //   };
     //   setMessages(prev => [...prev, responseMessage]);
     // }, 4000);
-  };
+
 
   // const handleLikeMessage = (messageId: string) => {
   //   setMessages(prev =>
@@ -399,15 +407,44 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
 
   console.log('selected contact', selectedContact)
 
-  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files) {
-        const newImages = Array.from(e.target.files).map((file) =>
-          URL.createObjectURL(file)
-        );
-  
-        set_images((prevImages) => [...prevImages,...newImages]);
-      }
-    };
+  const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && selectedContact) {
+      const newImages = Array.from(e.target.files).map((file) =>
+        URL.createObjectURL(file)
+      );
+
+      // 1. Update preview
+      set_images((prevImages) => [...prevImages, ...newImages]);
+
+      // 2. Convert and auto-send (small delay to ensure preview state applied)
+      setTimeout(async () => {
+        try {
+          const imagesBase64 = await Promise.all(
+            newImages.map(async (url) => {
+              const blob = await fetch(url).then((res) => res.blob());
+              const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              return base64;
+            })
+          );
+
+          // If there's a typed message, store it and clear input so we send images first.
+          if (message.trim()) {
+            setPendingText(message);
+            setMessage('');
+          }
+
+          // Send images first (without the typed text)
+          await handleSendMessage({ psid: selectedContact.psid, imagesOverride: imagesBase64, overrideMessage: '' });
+        } catch (error) {
+          console.error('Error auto-sending image:', error);
+        }
+      }, 100);
+    }
+  };
   
     const handleRemoveImage = (imageUrl: string) => {
    
@@ -417,6 +454,21 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
         
         URL.revokeObjectURL(imageUrl);
     };
+
+    // detect loading transition from true -> false to send pending text (if any)
+    const prevLoadingRef = useRef<boolean>(false);
+    useEffect(() => {
+      if (prevLoadingRef.current && !loading) {
+        // upload just finished
+        if (pendingText && selectedContact) {
+          const text = pendingText;
+          setPendingText(null);
+          // send the pending text now
+          handleSendMessage({ psid: selectedContact.psid, overrideMessage: text });
+        }
+      }
+      prevLoadingRef.current = loading;
+    }, [loading, pendingText, selectedContact]);
 
 
   return (
@@ -616,6 +668,11 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                       >
                         <X className="w-3 h-3" />
                       </button>
+                      {loading && (
+                        <div className="absolute inset-0 bg-black/40 flex justify-center items-center rounded-md">
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -683,7 +740,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                 </div>
                 {message.trim() ? (
                   <Button
-                    onClick={() => handleSendMessage(selectedContact?.psid)}
+                    onClick={() => handleSendMessage({ psid: selectedContact?.psid })}
                     variant="ghost"
                     size="sm"
                     className="text-blue-500 hover:bg-blue-50 p-2 h-auto font-medium"
