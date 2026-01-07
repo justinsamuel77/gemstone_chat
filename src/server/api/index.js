@@ -1673,44 +1673,62 @@ app.post("/api/sendwhatsappMessage", async (c) => {
           uploadedImages.push(uploadRes.secure_url);
 
           // Then upload to WhatsApp Media
-          const formData = new FormData();
-          formData.append('file', uploadRes.secure_url);
-          formData.append('type', 'image/png');
-          formData.append('messaging_product', 'whatsapp');
+          try {
+            // Fetch the Cloudinary image bytes so we can upload binary to WhatsApp media endpoint
+            const imageResp = await axios.get(uploadRes.secure_url, { responseType: 'arraybuffer' });
+            const buffer = Buffer.from(imageResp.data, 'binary');
 
-          const uploadResFB = await axios.post(
-            'https://graph.facebook.com/v22.0/891880160681645/media',
-            formData,
-            {
-              headers: {
-                Authorization: `Bearer ${process.env.META_TOKEN}`,
-                ...formData.getHeaders(),
-              },
+            const formData = new FormData();
+            formData.append('file', buffer, {
+              filename: `image_${Date.now()}_${i}.jpg`,
+              contentType: imageResp.headers['content-type'] || 'image/jpeg'
+            });
+            formData.append('type', imageResp.headers['content-type'] || 'image/jpeg');
+            formData.append('messaging_product', 'whatsapp');
+
+            const uploadResFB = await axios.post(
+              'https://graph.facebook.com/v22.0/891880160681645/media',
+              formData,
+              {
+                headers: {
+                  Authorization: `Bearer ${process.env.META_TOKEN}`,
+                  ...formData.getHeaders(),
+                },
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+              }
+            );
+
+            console.log('WhatsApp media upload response:', uploadResFB.data);
+            const mediaId = uploadResFB?.data?.id;
+
+            if (!mediaId) {
+              console.error('❌ No media id returned from WhatsApp media upload', uploadResFB.data);
+            } else {
+              await axios.post(
+                'https://graph.facebook.com/v22.0/891880160681645/messages',
+                {
+                  messaging_product: 'whatsapp',
+                  to: phone_no,
+                  type: 'image',
+                  image: {
+                    id: mediaId,
+                    caption: message && message.trim() !== '' ? message : undefined,
+                  },
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${process.env.META_TOKEN}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              console.log('✅ Sent image:', mediaId);
             }
-          );
-
-          const mediaId = uploadResFB.data.id;
-
-          await axios.post(
-            'https://graph.facebook.com/v22.0/891880160681645/messages',
-            {
-              messaging_product: 'whatsapp',
-              to: phone_no,
-              type: 'image',
-              image: {
-                id: mediaId,
-                caption: message && message.trim() !== '' ? message : undefined,
-              },
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${process.env.META_TOKEN}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-
-          console.log('✅ Sent image:', mediaId);
+          } catch (fbErr) {
+            console.error('❌ Error uploading/sending image to WhatsApp:', fbErr?.response?.data || fbErr.message || fbErr);
+          }
         } catch (err) {
           console.error('❌ Cloudinary upload/send error:', err);
         }
