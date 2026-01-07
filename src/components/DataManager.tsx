@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { apiService } from '../utils/supabase/api';
+import { create } from 'domain';
 
 interface Lead {
   id: string;
@@ -107,34 +108,34 @@ interface message_history {
   time: string;
   type: string;
   message: string;
-  images?:string [];
+  images?: string[];
 }
 
 interface Whatsapp {
   id: string;
   recipient_name: string;
-  recipient_number:number;
-  message_history:message_history [],
+  recipient_number: number;
+  message_history: message_history[],
   created_at: string;
 }
 
 interface Instagram {
   id: string;
   psid: number;
-  avatar?:string;
+  avatar?: string;
   user_name: string
-  message_history:message_history [],
+  message_history: message_history[],
   created_at: string;
 }
 interface Message {
-  phone_no:number;
-  message:string;
+  phone_no: number;
+  message: string;
   images: string[];
 }
 
 interface InstagramMessage {
-  psid:number;
-  message:string;
+  psid: number;
+  message: string;
 }
 
 
@@ -144,46 +145,46 @@ interface DataManagerContextType {
   dealers: Dealer[];
   employees: Employee[];
   inventory: Inventory[];
-  whatappmessage : Whatsapp[];
+  whatappmessage: Whatsapp[];
   instagrammessage: Instagram[];
   inventoryTransactions: InventoryTransaction[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Data operations
   loadAllData: () => Promise<void>;
   refreshData: () => Promise<void>;
-  
+
   // Lead operations
   createLead: (leadData: any) => Promise<Lead | null>;
   updateLead: (leadId: string, leadData: any) => Promise<Lead | null>;
   deleteLead: (leadId: string) => Promise<boolean>;
-  
+
   // Order operations
   createOrder: (orderData: any) => Promise<Order | null>;
   updateOrder: (orderId: string, orderData: any) => Promise<Order | null>;
   deleteOrder: (orderId: string) => Promise<boolean>;
-  
+
   // Dealer operations
   createDealer: (dealerData: any) => Promise<Dealer | null>;
   updateDealer: (dealerId: string, dealerData: any) => Promise<Dealer | null>;
   deleteDealer: (dealerId: string) => Promise<boolean>;
-  
+
   // Employee operations
   createEmployee: (employeeData: any) => Promise<Employee | null>;
   updateEmployee: (employeeId: string, employeeData: any) => Promise<Employee | null>;
   deleteEmployee: (employeeId: string) => Promise<boolean>;
-  
+
   // Inventory operations
   createInventory: (inventoryData: any) => Promise<Inventory | null>;
   updateInventory: (inventoryId: string, inventoryData: any) => Promise<Inventory | null>;
   createInventoryTransaction: (transactionData: any) => Promise<InventoryTransaction | null>;
 
   //Whatsapp opeartions
-  sendWhatsappMessage: (message: any) => Promise<Message | boolean| null | any>;
+  sendWhatsappMessage: (message: any) => Promise<Message | boolean | null | any>;
 
   //Instagram opeartions
-  sendInstagramMessage:  (message: any) => Promise<InstagramMessage | boolean| null | any>;
+  sendInstagramMessage: (message: any) => Promise<InstagramMessage | boolean | null | any>;
 }
 
 const DataManagerContext = createContext<DataManagerContextType | null>(null);
@@ -225,7 +226,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     setError(null);
 
     try {
-      const [leadsResponse, ordersResponse, dealersResponse, employeesResponse, inventoryResponse, transactionsResponse,whatsappResponse,instagramResponse] = await Promise.all([
+      const [leadsResponse, ordersResponse, dealersResponse, employeesResponse, inventoryResponse, transactionsResponse, whatsappResponse, instagramResponse] = await Promise.all([
         apiService.getLeads(),
         apiService.getOrders(),
         apiService.getDealers(),
@@ -257,10 +258,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           status: dbLead.status,
           source: dbLead.source || '',
           assignedTo: dbLead.assigned_to || '',
-          lastContact: dbLead.last_contact || '',
+          lastContact: dbLead.last_contact || dbLead.created_at || dbLead.createdAt || new Date().toISOString(),
           value: dbLead.value || 0,
           priority: dbLead.priority || 'Medium',
-          createdAt: dbLead.created_at,
+          createdAt: dbLead.created_at || dbLead.createdAt || new Date().toISOString(),
           company: dbLead.company || '',
           dateOfBirth: dbLead.date_of_birth,
           marriageDate: dbLead.marriage_date,
@@ -272,7 +273,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
         }));
         setLeads(formattedLeads);
         console.log(`✅ Loaded ${formattedLeads.length} leads`);
-        
+
         // Check for table setup warning
         if (leadsResponse.data.warning) {
           console.warn('⚠️ Database setup warning:', leadsResponse.data.warning);
@@ -311,7 +312,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
         }));
         setOrders(formattedOrders);
         console.log(`✅ Loaded ${formattedOrders.length} orders`);
-        
+
         // Check for table setup warning
         if (ordersResponse.data.warning) {
           console.warn('⚠️ Database setup warning:', ordersResponse.data.warning);
@@ -361,7 +362,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
       } else {
         console.error('❌ Failed to load inventory transactions:', transactionsResponse.error);
       }
-  
+
       if (whatsappResponse.success && whatsappResponse.data?.whatsappmessages) {
         setWhatsapp(whatsappResponse.data.whatsappmessages);
         console.log(`✅ Loaded ${whatsappResponse.data.whatsappmessages.length} whatapp messages`);
@@ -375,7 +376,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
       } else {
         console.error('❌ Failed to load instagrammessage:', instagramResponse.error);
       }
-      
+
 
     } catch (error) {
       console.error('💥 Exception during data loading:', error);
@@ -402,7 +403,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
   const createLead = useCallback(async (leadData: any): Promise<Lead | null> => {
     console.log('🔄 Creating lead:', leadData);
     setIsLoading(true);
-    
+
     try {
       // Convert camelCase frontend data to snake_case for database
       const dbLeadData = {
@@ -412,7 +413,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
         status: leadData.status,
         source: leadData.source,
         assigned_to: leadData.assignedTo,
-        last_contact: leadData.lastContact,
+        last_contact: leadData.lastContact || leadData?.createdAt,
         value: leadData.value,
         priority: leadData.priority,
         company: leadData.company,
@@ -422,15 +423,17 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
         net_weight: leadData.netWeight,
         estimated_delivery_date: leadData.estimatedDeliveryDate,
         notes: leadData.notes,
-        instagram_username: leadData.instagramUsername
+        instagram_username: leadData.instagramUsername,
+        created_at: leadData.createdAt
       };
 
       const response = await apiService.createLead(dbLeadData);
-      
+      console.log('API Response for createLead:', response);
+
       if (response.success && response.data?.lead) {
         const dbLead = response.data.lead;
         console.log('✅ Lead created successfully:', dbLead);
-        
+
         // Convert database response to frontend format
         const newLead: Lead = {
           id: dbLead.id,
@@ -440,10 +443,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           status: dbLead.status,
           source: dbLead.source || '',
           assignedTo: dbLead.assigned_to || '',
-          lastContact: dbLead.last_contact || '',
+          lastContact: dbLead.last_contact || dbLead.created_at,
           value: dbLead.value || 0,
           priority: dbLead.priority || 'Medium',
-          createdAt: dbLead.created_at,
+          createdAt: dbLead.created_at || dbLead.createdAt || new Date().toISOString(),
           company: dbLead.company || '',
           dateOfBirth: dbLead.date_of_birth,
           marriageDate: dbLead.marriage_date,
@@ -453,7 +456,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           notes: dbLead.notes,
           instagramUsername: dbLead.instagram_username
         };
-        
+
         // Update local state immediately
         setLeads(prevLeads => {
           const filteredLeads = prevLeads.filter(lead => lead.id !== newLead.id);
@@ -461,7 +464,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           console.log(`📊 Updated leads count: ${updatedLeads.length}`);
           return updatedLeads;
         });
-        
+
         setError(null); // Clear any previous errors
         return newLead;
       } else {
@@ -486,7 +489,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const updateLead = useCallback(async (leadId: string, leadData: any): Promise<Lead | null> => {
     console.log('🔄 Updating lead:', leadId, leadData);
-    
+
     try {
       // Convert camelCase to snake_case for database
       const dbLeadData = {
@@ -510,11 +513,11 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
       };
 
       const response = await apiService.updateLead(leadId, dbLeadData);
-      
+
       if (response.success && response.data?.lead) {
         const dbLead = response.data.lead;
         console.log('✅ Lead updated successfully:', dbLead);
-        
+
         // Convert database response to frontend format
         const updatedLead: Lead = {
           id: dbLead.id,
@@ -527,7 +530,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           lastContact: dbLead.last_contact || '',
           value: dbLead.value || 0,
           priority: dbLead.priority || 'Medium',
-          createdAt: dbLead.created_at,
+          createdAt: dbLead.created_at || dbLead.createdAt || new Date().toISOString(),
           company: dbLead.company || '',
           dateOfBirth: dbLead.date_of_birth,
           marriageDate: dbLead.marriage_date,
@@ -537,11 +540,11 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           notes: dbLead.notes,
           instagramUsername: dbLead.instagram_username
         };
-        
-        setLeads(prevLeads => 
+
+        setLeads(prevLeads =>
           prevLeads.map(lead => lead.id === leadId ? updatedLead : lead)
         );
-        
+
         return updatedLead;
       } else {
         console.error('❌ Failed to update lead:', response.error);
@@ -557,10 +560,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const deleteLead = useCallback(async (leadId: string): Promise<boolean> => {
     console.log('🔄 Deleting lead:', leadId);
-    
+
     try {
       const response = await apiService.deleteLead(leadId);
-      
+
       if (response.success) {
         console.log('✅ Lead deleted successfully');
         setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
@@ -581,7 +584,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
   const createOrder = useCallback(async (orderData: any): Promise<Order | null> => {
     console.log('🔄 Creating order:', orderData);
     setIsLoading(true);
-    
+
     try {
       // Convert camelCase frontend data to snake_case for database
       const dbOrderData = {
@@ -602,11 +605,11 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
       };
 
       const response = await apiService.createOrder(dbOrderData);
-      
+
       if (response.success && response.data?.order) {
         const dbOrder = response.data.order;
         console.log('✅ Order created successfully:', dbOrder);
-        
+
         // The server already returns camelCase format, so we can use it directly
         const newOrder: Order = {
           id: dbOrder.id,
@@ -626,7 +629,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           priority: dbOrder.priority || 'Medium',
           notes: dbOrder.notes
         };
-        
+
         // Update local state immediately
         setOrders(prevOrders => {
           const filteredOrders = prevOrders.filter(order => order.id !== newOrder.id);
@@ -634,7 +637,7 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           console.log(`📊 Updated orders count: ${updatedOrders.length}`);
           return updatedOrders;
         });
-        
+
         setError(null); // Clear any previous errors
         return newOrder;
       } else {
@@ -659,14 +662,14 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const updateOrder = useCallback(async (orderId: string, orderData: any): Promise<Order | null> => {
     console.log('🔄 Updating order:', orderId, orderData);
-    
+
     try {
       const response = await apiService.updateOrder(orderId, orderData);
-      
+
       if (response.success && response.data?.order) {
         const dbOrder = response.data.order;
         console.log('✅ Order updated successfully:', dbOrder);
-        
+
         // Convert database response to frontend format if needed
         const updatedOrder: Order = {
           id: dbOrder.id,
@@ -686,11 +689,11 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
           priority: dbOrder.priority || 'Medium',
           notes: dbOrder.notes
         };
-        
-        setOrders(prevOrders => 
+
+        setOrders(prevOrders =>
           prevOrders.map(order => order.id === orderId ? updatedOrder : order)
         );
-        
+
         return updatedOrder;
       } else {
         console.error('❌ Failed to update order:', response.error);
@@ -706,10 +709,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const deleteOrder = useCallback(async (orderId: string): Promise<boolean> => {
     console.log('🔄 Deleting order:', orderId);
-    
+
     try {
       const response = await apiService.deleteOrder(orderId);
-      
+
       if (response.success) {
         console.log('✅ Order deleted successfully');
         setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
@@ -729,14 +732,14 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
   // Dealer operations
   const createDealer = useCallback(async (dealerData: any): Promise<Dealer | null> => {
     console.log('🔄 Creating dealer:', dealerData);
-    
+
     try {
       const response = await apiService.createDealer(dealerData);
-      
+
       if (response.success && response.data?.dealer) {
         const newDealer = response.data.dealer;
         console.log('✅ Dealer created successfully:', newDealer);
-        
+
         setDealers(prevDealers => [newDealer, ...prevDealers]);
         return newDealer;
       } else {
@@ -753,18 +756,18 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const updateDealer = useCallback(async (dealerId: string, dealerData: any): Promise<Dealer | null> => {
     console.log('🔄 Updating dealer:', dealerId, dealerData);
-    
+
     try {
       const response = await apiService.updateDealer(dealerId, dealerData);
-      
+
       if (response.success && response.data?.dealer) {
         const updatedDealer = response.data.dealer;
         console.log('✅ Dealer updated successfully:', updatedDealer);
-        
-        setDealers(prevDealers => 
+
+        setDealers(prevDealers =>
           prevDealers.map(dealer => dealer.id === dealerId ? updatedDealer : dealer)
         );
-        
+
         return updatedDealer;
       } else {
         console.error('❌ Failed to update dealer:', response.error);
@@ -780,10 +783,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const deleteDealer = useCallback(async (dealerId: string): Promise<boolean> => {
     console.log('🔄 Deleting dealer:', dealerId);
-    
+
     try {
       const response = await apiService.deleteDealer(dealerId);
-      
+
       if (response.success) {
         console.log('✅ Dealer deleted successfully');
         setDealers(prevDealers => prevDealers.filter(dealer => dealer.id !== dealerId));
@@ -803,10 +806,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
   // Employee operations
   const createEmployee = useCallback(async (employeeData: any): Promise<Employee | null> => {
     console.log('🔄 Creating employee:', employeeData);
-    
+
     try {
       const response = await apiService.createEmployee(employeeData);
-      
+
       if (response.success && response.data?.employee) {
         const newEmployee = response.data.employee;
         console.log('✅ Employee created successfully:', newEmployee);
@@ -826,18 +829,18 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const updateEmployee = useCallback(async (employeeId: string, employeeData: any): Promise<Employee | null> => {
     console.log('🔄 Updating employee:', employeeId, employeeData);
-    
+
     try {
       const response = await apiService.updateEmployee(employeeId, employeeData);
-      
+
       if (response.success && response.data?.employee) {
         const updatedEmployee = response.data.employee;
         console.log('✅ Employee updated successfully:', updatedEmployee);
-        
-        setEmployees(prevEmployees => 
+
+        setEmployees(prevEmployees =>
           prevEmployees.map(employee => employee.id === employeeId ? updatedEmployee : employee)
         );
-        
+
         return updatedEmployee;
       } else {
         console.error('❌ Failed to update employee:', response.error);
@@ -853,10 +856,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const deleteEmployee = useCallback(async (employeeId: string): Promise<boolean> => {
     console.log('🔄 Deleting employee:', employeeId);
-    
+
     try {
       const response = await apiService.deleteEmployee(employeeId);
-      
+
       if (response.success) {
         console.log('✅ Employee deleted successfully');
         setEmployees(prevEmployees => prevEmployees.filter(employee => employee.id !== employeeId));
@@ -876,10 +879,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
   // Inventory operations
   const createInventory = useCallback(async (inventoryData: any): Promise<Inventory | null> => {
     console.log('🔄 Creating inventory:', inventoryData);
-    
+
     try {
       const response = await apiService.createInventory(inventoryData);
-      
+
       if (response.success && response.data?.inventory) {
         const newInventory = response.data.inventory;
         console.log('✅ Inventory created successfully:', newInventory);
@@ -899,18 +902,18 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const updateInventory = useCallback(async (inventoryId: string, inventoryData: any): Promise<Inventory | null> => {
     console.log('🔄 Updating inventory:', inventoryId, inventoryData);
-    
+
     try {
       const response = await apiService.updateInventory(inventoryId, inventoryData);
-      
+
       if (response.success && response.data?.inventory) {
         const updatedInventory = response.data.inventory;
         console.log('✅ Inventory updated successfully:', updatedInventory);
-        
-        setInventory(prevInventory => 
+
+        setInventory(prevInventory =>
           prevInventory.map(item => item.id === inventoryId ? updatedInventory : item)
         );
-        
+
         return updatedInventory;
       } else {
         console.error('❌ Failed to update inventory:', response.error);
@@ -926,24 +929,24 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const createInventoryTransaction = useCallback(async (transactionData: any): Promise<InventoryTransaction | null> => {
     console.log('🔄 Creating inventory transaction:', transactionData);
-    
+
     try {
       const response = await apiService.createInventoryTransaction(transactionData);
-      
+
       if (response.success && response.data?.transaction) {
         const newTransaction = response.data.transaction;
         const updatedInventory = response.data.updatedInventory;
-        
+
         console.log('✅ Inventory transaction created successfully:', newTransaction);
-        
+
         // Update both transactions and inventory
         setInventoryTransactions(prevTransactions => [newTransaction, ...prevTransactions]);
         if (updatedInventory) {
-          setInventory(prevInventory => 
+          setInventory(prevInventory =>
             prevInventory.map(item => item.id === updatedInventory.id ? updatedInventory : item)
           );
         }
-        
+
         return newTransaction;
       } else {
         console.error('❌ Failed to create inventory transaction:', response.error);
@@ -959,10 +962,10 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
 
   const sendWhatsappMessage = useCallback(async (message: any): Promise<boolean | null | any> => {
     console.log('🔄 Sending messagfe:', message);
-    
+
     try {
-      const response = await apiService.sentWhatsappMessages(message);     
-      if (response.success ) {   
+      const response = await apiService.sentWhatsappMessages(message);
+      if (response.success) {
         return response;
       } else {
         console.error('❌ Failed to Send message:', response.error);
@@ -976,24 +979,24 @@ export function DataManagerProvider({ children, user }: DataManagerProviderProps
     }
   }, []);
 
-    const sendInstagramMessage = useCallback(async (message: any): Promise<boolean | null | any> => {
-      console.log('🔄 Sending instagram message:', message);
-      
-      try {
-        const response = await apiService.sentInstagramMessages(message);     
-        if (response.success ) {   
-          return response;
-        } else {
-          console.error('❌ Failed to Send instagram message:', response.error);
-          setError(response.error || 'Failed to Send message');
-          return false;
-        }
-      } catch (error) {
-        console.error('💥 Exception Sending instagram message:', error);
-        setError(error instanceof Error ? error.message : 'Failed to Send message');
+  const sendInstagramMessage = useCallback(async (message: any): Promise<boolean | null | any> => {
+    console.log('🔄 Sending instagram message:', message);
+
+    try {
+      const response = await apiService.sentInstagramMessages(message);
+      if (response.success) {
+        return response;
+      } else {
+        console.error('❌ Failed to Send instagram message:', response.error);
+        setError(response.error || 'Failed to Send message');
         return false;
       }
-    }, [])
+    } catch (error) {
+      console.error('💥 Exception Sending instagram message:', error);
+      setError(error instanceof Error ? error.message : 'Failed to Send message');
+      return false;
+    }
+  }, [])
 
   const contextValue: DataManagerContextType = {
     leads,
