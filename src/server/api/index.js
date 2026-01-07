@@ -1511,20 +1511,26 @@ app.post('/webhook', async (c) => {
                 responseType: 'arraybuffer',
               });
 
-              // 3. Upload buffer to Cloudinary
-              const uploadRes = await cloudinary.uploader.upload_stream(
-                {
-                  folder: 'whatsapp_images',
-                  resource_type: 'image',
-                },
-                (error, result) => {
-                  if (error) throw error;
-                  newMessage.images.push(result.secure_url);
-                }
-              );
-
-              // Important: end stream
-              uploadRes.end(Buffer.from(imageResp.data));
+              // 3. Upload buffer to Cloudinary and wait for completion
+              try {
+                const secureUrl = await new Promise((resolve, reject) => {
+                  const stream = cloudinary.uploader.upload_stream(
+                    {
+                      folder: 'whatsapp_images',
+                      resource_type: 'image',
+                    },
+                    (error, result) => {
+                      if (error) return reject(error);
+                      if (!result || !result.secure_url) return reject(new Error('No secure_url in Cloudinary result'));
+                      resolve(result.secure_url);
+                    }
+                  );
+                  stream.end(Buffer.from(imageResp.data));
+                });
+                newMessage.images.push(secureUrl);
+              } catch (uploadErr) {
+                console.error('❌ Failed to upload image to Cloudinary (webhook):', uploadErr);
+              }
             } catch (imgErr) {
               console.error('❌ Failed to download/upload image:', imgErr);
             }
@@ -1664,13 +1670,13 @@ app.post("/api/sendwhatsappMessage", async (c) => {
     if (images.length > 0) {
       for (let i = 0; i < images.length; i++) {
         const base64Data = images[i];
-        try {
-          const uploadRes = await cloudinary.uploader.upload(base64Data, {
-            folder: 'whatsapp_images',
-            resource_type: 'image',
-          });
+          try {
+            const uploadRes = await cloudinary.uploader.upload(base64Data, {
+              folder: 'whatsapp_images',
+              resource_type: 'image',
+            });
 
-          uploadedImages.push(uploadRes.secure_url);
+            uploadedImages.push(uploadRes.secure_url);
 
           // Then upload to WhatsApp Media
           try {
