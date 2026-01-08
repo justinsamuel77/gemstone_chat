@@ -1462,16 +1462,33 @@ app.post('/webhook', async (c) => {
   console.log('Webhook called');
   try {
     const body = await c.req.json();
+    console.log('bodybody',body)
 
     if (body.object) {
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const messages = value?.messages;
+      const messageId = messages?.[0]?.id;
       const contact = value?.contacts?.[0];
       const sender_name = contact?.profile?.name;
 
-      console.log('Sender name:', sender_name);
+      if (!messageId || !contact) {
+        console.log('ignoring webhook');
+        return c.json({ success: true });
+      }
+
+      const { data: existing } = await supabase
+        .from('whatsapp')
+        .select('id')
+        .eq('mid', messageId)
+        .single();
+
+      if (existing) {
+        console.log('Duplicate message detected, ignoring:', messageId);
+        return c.json({ success: true });
+      }
+      // console.log('Sender name:', sender_name,messages,contact);
 
       if (messages && messages.length > 0) {
         const message = messages[0];
@@ -1487,6 +1504,7 @@ app.post('/webhook', async (c) => {
 
         // ✅ Handle text messages
         if (messageType === 'text') {
+          console.log('message.text?.body',message.text?.body)
           newMessage.message = message.text?.body || '';
         }
 
@@ -1554,7 +1572,7 @@ app.post('/webhook', async (c) => {
           const updatedMessages = [...existing.message_history, newMessage];
           const { error: updateError } = await supabase
             .from('whatsapp')
-            .update({ message_history: updatedMessages })
+            .update({ message_history: updatedMessages,last_message_time: new Date().toISOString(),mid:messageId })
             .eq('id', existing.id);
 
           if (updateError) {
@@ -1564,9 +1582,11 @@ app.post('/webhook', async (c) => {
         } else {
           // Insert new record
           const insertPayload = {
-            recipient_name: sender_name,
+            recipient_name: sender_name ?? "No name",
             recipient_number: from,
-            message_history: [newMessage]
+            message_history: [newMessage],
+            last_message_time: new Date().toISOString(),
+            mid:messageId
           };
 
           const { error: insertError } = await supabase
@@ -1636,6 +1656,19 @@ import fs from "fs";
 import path from "path";
 import FormData from "form-data";
 
+function isWithin24HourWindow(lastMessageTime) {
+  if (!lastMessageTime) return false;
+
+  const lastTime = new Date(lastMessageTime).getTime();
+  const now = Date.now();
+
+  const diffMs = now - lastTime;
+  const diffHours = diffMs / (1000 * 60 * 60);
+  console.log('diff hours',diffHours)
+
+  return diffHours <= 24;
+}
+
 app.post("/api/sendwhatsappMessage", async (c) => {
   try {
     const user = await verifyAuth(c.req.raw);
@@ -1648,6 +1681,29 @@ app.post("/api/sendwhatsappMessage", async (c) => {
     console.log("Images:", images.length);
 
     if (message && message.trim() !== "") {
+
+      const { data: existing, error: fetchError } = await supabase
+        .from("whatsapp")
+        .select("id, last_message_time")
+        .eq("recipient_number", phone_no)
+        .single();
+      
+      if (fetchError && fetchError.code !== "PGRST116") {
+        console.error(fetchError);
+        return c.json({ error: "Database error" }, 500);
+      }
+
+      if (existing) {
+        const isAllowed = isWithin24HourWindow(existing.last_message_time);
+        console.log("is24hr:", isAllowed);
+
+        if (!isAllowed) {
+          return c.json(
+            { error: "24 hours time window exceeded" },
+            403
+          );
+        }
+      }
       const textRes = await axios.post(
         "https://graph.facebook.com/v22.0/891880160681645/messages",
         {
@@ -1663,6 +1719,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
           },
         }
       );
+      console.log('whatsapp response',textRes.data)
     }
 
     const savedPaths = [];
@@ -1741,7 +1798,6 @@ app.post("/api/sendwhatsappMessage", async (c) => {
       }
     }
 
-    // ✅ 3. Save to Supabase
     const newMessage = {
       type: "Sent",
       message,
@@ -1773,7 +1829,7 @@ app.post("/api/sendwhatsappMessage", async (c) => {
       }
     } else {
       const insertPayload = {
-        recipient_name: name,
+        recipient_name: name ?? "No name",
         recipient_number: phone_no,
         message_history: [newMessage],
       };
@@ -1877,7 +1933,7 @@ app.post("/instawebhook", async (c) => {
   console.log("Incoming Instagram Webhook");
 
   const body = await c.req.json();
-  console.log("Webhook Body:", JSON.stringify(body, null, 2));
+  // console.log("Webhook Body:", JSON.stringify(body, null, 2));
 
   // Challenge (optional)
   const url = new URL(c.req.url);
@@ -1911,6 +1967,27 @@ app.post("/instawebhook", async (c) => {
       messaging.message?.text ??
       messaging.message?.message ??
       null;
+    
+    if (!text) {
+      console.log("Ignoring webhook call: no text");
+      return c.json({ success: true });
+    }
+    
+    const messageId = messaging.message?.mid || messaging.message_edit?.mid;
+
+    const { data: existingMessages } = await supabase
+      .from("instagram")
+      .select("mid")
+      .eq("psid", senderId)
+      .eq("mid", messageId)
+      .single();
+
+    if (existingMessages) {
+      console.log("Duplicate message detected:", messageId);
+      return c.json({ success: true });
+    }
+
+    console.log('store message sender id',senderId)
 
     const newMessage = {
       type: "Received",
@@ -1961,6 +2038,8 @@ app.post("/instawebhook", async (c) => {
     console.log("Sender:", senderId);
     console.log("Text:", text);
     console.log("Images:", newMessage.images);
+    
+    // return c.json({ success: false, error: "Failed to fetch" }, 500);
 
     const { data: existingRows, error: fetchError } = await supabase
       .from("instagram")
@@ -1997,7 +2076,7 @@ app.post("/instawebhook", async (c) => {
 
       const { error: updateError } = await supabase
         .from("instagram")
-        .update({ message_history: mergedHistory })
+        .update({ message_history: mergedHistory,mid:messageId })
         .eq("id", existing.id);
 
       if (updateError) {
@@ -2026,6 +2105,7 @@ app.post("/instawebhook", async (c) => {
         {
           psid: senderId,
           message_history: [newMessage],
+          mid:messageId
         },
       ]);
     }
@@ -2084,120 +2164,133 @@ app.post("/instawebhook", async (c) => {
 
 app.post("/api/sendinstagramMessage", async (c) => {
   try {
+    // 1️⃣ Auth check
     const user = await verifyAuth(c.req.raw);
     if (!user) return c.json({ error: "Unauthorized" }, 401);
 
+    // 2️⃣ Request body
     const body = await c.req.json();
     const { psid, message, images = [] } = body;
 
-    console.log("Psid :", psid);
-    console.log("Images:", images.length);
-
-    const textRes = await axios.post(
-      "https://graph.instagram.com/v21.0/17841418132574829/messages",
-      {
-        message: JSON.stringify({
-          text: message,
-        }),
-        recipient: JSON.stringify({
-          id: psid
-        }),
-      },
-      {
-        headers: {
-          Authorization: `Bearer IGAAUCHwkjhZChBZAGJ0TWhwNzNlMDFLU1BObC03YTN3NjFwNy16clpvSk1ZAanF0QjB1SGlVdnpoR1drOS15RGVNNjlQQzZArMHdfRlRoLUYtRUwtQTNudXMyOW44ZAVp3Q1lMNVB4M1VKR2tMQVJDMHRlaGN6NlVHRnhvNDZADcGVPWQZDZD`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    console.log("Text message sent:", textRes.data);
-
-    const uploadDir = path.join(process.cwd(), "..", "public", "instagram_images");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-    const savedPaths = [];
-    for (let i = 0; i < images.length; i++) {
-      const base64Data = images[i].split(",")[1];
-      const fileName = `img_${Date.now()}_${i}.png`;
-      const filePath = path.join(uploadDir, fileName);
-      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-      savedPaths.push(`/instagram_images/${fileName}`);
+    if (!psid) {
+      return c.json({ error: "psid is required" }, 400);
     }
 
-    for (const imgPath of savedPaths) {
-      const filePath = path.join(process.cwd(), "..", "public", imgPath);
-      const formData = new FormData();
-      formData.append("file", fs.createReadStream(filePath));
-      formData.append("type", "image/png");
-      formData.append("messaging_product", "instagran");
+    console.log("📩 Instagram PSID:", psid);
+    console.log("🖼 Images:", images.length);
 
-      const uploadRes = await axios.post(
-        "https://graph.facebook.com/v22.0/891880160681645/media",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.META_TOKEN}`,
-            ...formData.getHeaders(),
-          },
-        }
-      );
-
-      const mediaId = uploadRes.data.id;
-
-      // Send image message using the uploaded media ID
-      await axios.post(
-        "https://graph.facebook.com/v22.0/891880160681645/messages",
-        {
-          messaging_product: "whatsapp",
-          to: phone_no,
-          type: "image",
-          image: { id: mediaId },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.META_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      console.log("Image message sent:", mediaId);
-    }
-
-    const newMessage = {
-      type: "Sent",
-      message,
-      time: new Date().toISOString(),
-      images: savedPaths,
-    };
-
+    // 3️⃣ Fetch last message time (24h window)
     const { data: existing, error: fetchError } = await supabase
       .from("instagram")
-      .select("psid, message_history")
+      .select("psid, message_history, last_message_time")
       .eq("psid", psid)
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") {
       console.error("❌ Fetch error:", fetchError);
-      return c.json({ error: "Failed to fetch existing record" }, 500);
+      return c.json({ error: "Database error" }, 500);
     }
 
+    // 4️⃣ 24-hour window check
+    if (existing?.last_message_time) {
+      const lastTime = new Date(existing.last_message_time).getTime();
+      const now = Date.now();
+      const diffHours = (now - lastTime) / (1000 * 60 * 60);
+
+      if (diffHours > 24) {
+        return c.json(
+          { error: "24 hours time window exceeded" },
+          403
+        );
+      }
+    }
+
+    // 5️⃣ Send TEXT message (if exists)
+    if (message && message.trim() !== "") {
+      await axios.post(
+        "https://graph.instagram.com/v21.0/17841418132574829/messages",
+        {
+          recipient: { id: psid },
+          message: { text: message },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.INSTA_META_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("✅ Text message sent");
+    }
+
+    // 6️⃣ Upload images to Cloudinary + send to Instagram
+    const uploadedImages = [];
+
+    for (const base64Image of images) {
+      const uploadRes = await cloudinary.uploader.upload(base64Image, {
+        folder: "instagram_images",
+      });
+
+      uploadedImages.push(uploadRes.secure_url);
+
+      await axios.post(
+        "https://graph.instagram.com/v21.0/17841418132574829/messages",
+        {
+          recipient: { id: psid },
+          message: {
+            attachment: {
+              type: "image",
+              payload: {
+                url: uploadRes.secure_url,
+                is_reusable: true,
+              },
+            },
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.INSTA_META_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("✅ Image sent:", uploadRes.secure_url);
+    }
+
+    // 7️⃣ Prepare message object for DB
+    const newMessage = {
+      type: "Sent",
+      message: message || "",
+      images: uploadedImages,
+      time: new Date().toISOString(),
+    };
+
+    // 8️⃣ Save to Supabase
     if (existing) {
-      const updatedMessages = [...existing.message_history, newMessage];
+      const updatedMessages = [
+        ...(existing.message_history || []),
+        newMessage,
+      ];
+
       const { error: updateError } = await supabase
         .from("instagram")
-        .update({ message_history: updatedMessages })
-        .eq("psid", existing.psid);
+        .update({
+          message_history: updatedMessages,
+          last_message_time: new Date().toISOString(),
+        })
+        .eq("psid", psid);
 
       if (updateError) {
         console.error("❌ Update error:", updateError);
-        return c.json({ error: "Failed to update message history" }, 500);
+        return c.json({ error: "Failed to update messages" }, 500);
       }
     } else {
       const insertPayload = {
-        psid: psid,
+        psid,
         message_history: [newMessage],
+        last_message_time: new Date().toISOString(),
       };
 
       const { error: insertError } = await supabase
@@ -2206,16 +2299,28 @@ app.post("/api/sendinstagramMessage", async (c) => {
 
       if (insertError) {
         console.error("❌ Insert error:", insertError);
-        return c.json({ error: "Failed to insert new message record" }, 500);
+        return c.json({ error: "Failed to insert messages" }, 500);
       }
     }
 
-    return c.json({ success: true, savedPaths }, 200);
+    // 9️⃣ Success
+    return c.json(
+      { success: true, uploadedImages },
+      200
+    );
+
   } catch (err) {
-    console.error("❌ Error sending message:", err?.response?.data || err.message);
-    return c.json({ success: false, error: err?.response?.data || err.message }, 500);
+    console.error(
+      "❌ Error sending Instagram message:",
+      err?.response?.data || err.message
+    );
+    return c.json(
+      { success: false, error: err?.response?.data || err.message },
+      500
+    );
   }
 });
+
 
 // Health check
 app.get('/api/health', (c) => {
