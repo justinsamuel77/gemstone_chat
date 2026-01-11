@@ -630,6 +630,18 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                           }`}
                       // onDoubleClick={() => handleLikeMessage(msg.id)}
                       >
+                        {msg.images && msg.images.length > 0 && (
+                        <div className="gap-2 mt-2">
+                          {msg.images.map((img, i) => (
+                            <img
+                              key={i}
+                              src={img}
+                              alt={`attachment-${i}`}
+                              className="w-24 h-24 object-cover rounded-md border"
+                            />
+                          ))}
+                        </div>
+                      )}
                         <p className="text-sm">{msg?.message}</p>
                         <span className="text-xs text-gray-500">
                           {formatLastSeen(msg.time)}

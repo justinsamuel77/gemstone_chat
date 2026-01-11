@@ -1963,16 +1963,33 @@ app.post("/instawebhook", async (c) => {
 
     const senderId = messaging.sender?.id;
 
+    const hasText =
+    !!(
+      messaging.message?.text ??
+      messaging.message?.message
+    );
+
+    const hasImage =
+    Array.isArray(messaging.message?.attachments) &&
+    messaging.message.attachments.some(
+      (att) => att.type === "image"
+    );
+
     let text =
       messaging.message?.text ??
       messaging.message?.message ??
       null;
     
-    if (!text) {
-      console.log("Ignoring webhook call: no text");
+    // if (!text) {
+    //   console.log("Ignoring webhook call: no text");
+    //   return c.json({ success: true });
+    // }
+
+    if (!hasText && !hasImage) {
+      console.log("Ignoring webhook call: no text and no image");
       return c.json({ success: true });
     }
-    
+        
     const messageId = messaging.message?.mid || messaging.message_edit?.mid;
 
     const { data: existingMessages } = await supabase
@@ -1997,47 +2014,45 @@ app.post("/instawebhook", async (c) => {
     };
 
     if (messaging.message?.attachments?.length) {
-      for (const att of messaging.message.attachments) {
-        if (att.type === "image" && att.payload?.url) {
-          try {
-            console.log("Image recieved");
+    for (const att of messaging.message.attachments) {
+      if (att.type === "image" && att.payload?.url) {
+        try {
+          console.log("Image received");
 
-            const imgBuffer = await axios.get(att.payload.url, {
-              responseType: "arraybuffer",
-              headers: {
-                Authorization: `Bearer ${process.env.META_TOKEN}`,
+          const imgBuffer = await axios.get(att.payload.url, {
+            responseType: "arraybuffer",
+          });
+
+          const uploadPromise = new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              {
+                folder: "instagram_images",
+                resource_type: "image",
+              },
+              (err, result) => {
+                if (err) return reject(err);
+                resolve(result.secure_url);
               }
-            });
+            );
 
-            const uploadPromise = new Promise((resolve, reject) => {
-              const stream = cloudinary.uploader.upload_stream(
-                {
-                  folder: "instagram_images",
-                  resource_type: "image",
-                },
-                (err, result) => {
-                  if (err) return reject(err);
-                  resolve(result.secure_url);
-                }
-              );
+            stream.end(Buffer.from(imgBuffer.data));
+          });
 
-              stream.end(Buffer.from(imgBuffer.data));
-            });
+          const imageUrl = await uploadPromise;
+          newMessage.images.push(imageUrl);
 
-            const imageUrl = await uploadPromise;
-            newMessage.images.push(imageUrl);
-            console.log("Uploaded to Cloudinary:", imageUrl);
-
-          } catch (imgErr) {
-            console.error("Image Upload Failed:", imgErr);
-          }
+          console.log("Uploaded to Cloudinary:", imageUrl);
+        } catch (imgErr) {
+          console.error("Image Upload Failed:", imgErr);
         }
       }
     }
+}
 
-    console.log("Sender:", senderId);
-    console.log("Text:", text);
-    console.log("Images:", newMessage.images);
+
+    // console.log("Sender:", senderId);
+    // console.log("Text:", text);
+    // console.log("Images:", newMessage.images);
     
     // return c.json({ success: false, error: "Failed to fetch" }, 500);
 
