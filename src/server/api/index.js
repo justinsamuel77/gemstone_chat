@@ -2230,7 +2230,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.INSTA_META_TOKEN}`,
+            Authorization: `Bearer IGAAUCHwkjhZChBZAGJ0TWhwNzNlMDFLU1BObC03YTN3NjFwNy16clpvSk1ZAanF0QjB1SGlVdnpoR1drOS15RGVNNjlQQzZArMHdfRlRoLUYtRUwtQTNudXMyOW44ZAVp3Q1lMNVB4M1VKR2tMQVJDMHRlaGN6NlVHRnhvNDZADcGVPWQZDZD`,
             "Content-Type": "application/json",
           },
         }
@@ -2265,7 +2265,7 @@ app.post("/api/sendinstagramMessage", async (c) => {
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.INSTA_META_TOKEN}`,
+            Authorization: `Bearer IGAAUCHwkjhZChBZAGJ0TWhwNzNlMDFLU1BObC03YTN3NjFwNy16clpvSk1ZAanF0QjB1SGlVdnpoR1drOS15RGVNNjlQQzZArMHdfRlRoLUYtRUwtQTNudXMyOW44ZAVp3Q1lMNVB4M1VKR2tMQVJDMHRlaGN6NlVHRnhvNDZADcGVPWQZDZD`,
             "Content-Type": "application/json",
           },
         }
