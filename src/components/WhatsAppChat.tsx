@@ -257,11 +257,11 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
               <h1 className="text-lg font-medium">WhatsApp Business</h1>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              {/* <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 p-2 h-auto">
                   <MoreVertical className="w-5 h-5" />
                 </Button>
-              </DropdownMenuTrigger>
+              </DropdownMenuTrigger> */}
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>New Group</DropdownMenuItem>
                 <DropdownMenuItem>New Broadcast</DropdownMenuItem>
@@ -274,7 +274,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
         </div>
 
         {/* Search */}
-        <div className="p-3 border-b border-gray-200">
+        {/* <div className="p-3 border-b border-gray-200">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -284,7 +284,7 @@ export function WhatsAppChat({ onBack, selectedContactInfo }: WhatsAppChatProps)
               className="pl-10 bg-gray-100 border-0 rounded-lg"
             />
           </div>
-        </div>
+        </div> */}
 
         {/* Contacts List */}
         <ScrollArea className="flex-1">

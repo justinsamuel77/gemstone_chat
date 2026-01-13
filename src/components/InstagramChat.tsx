@@ -489,13 +489,13 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
               </Button>
               <h1 className="text-xl font-semibold">Direct</h1>
             </div>
-            <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
+            {/* <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
               <Plus className="w-5 h-5" />
-            </Button>
+            </Button> */}
           </div>
 
           {/* Search */}
-          <div className="relative">
+          {/* <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search"
@@ -503,7 +503,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-gray-100 border-0 rounded-lg"
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Contacts List */}
@@ -530,8 +530,9 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center">
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col ">
                         <h3 className="font-medium text-gray-900 truncate">{contact?.user_name ?? `User #${contact?.id}`}</h3>
+                        <p className='text-sm text-gray-400'>{contact?.psid}</p>
                         {/* {contact.isVerified && (
                           <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -584,6 +585,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                   <div>
                     <div className="flex items-center gap-1">
                       <h3 className="font-medium text-gray-900">{selectedContact.user_name ?? `User #${selectedContact?.id}`}</h3>
+                      <p className="text-md text-gray-500">({selectedContact?.psid})</p>
                       {/* {selectedContact.isVerified && (
                         <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                           <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -598,15 +600,15 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
+                  {/* <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
                     <Phone className="w-5 h-5" />
                   </Button>
                   <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
                     <Video className="w-5 h-5" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
+                  </Button> */}
+                  {/* <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-gray-100">
                     <Info className="w-5 h-5" />
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
             </div>
@@ -727,13 +729,13 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                 >
                   <Camera className="w-5 h-5" />
                 </Button>
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   className="p-2 h-auto hover:bg-gray-100"
                 >
                   <Mic className="w-5 h-5" />
-                </Button>
+                </Button> */}
                 <div className="flex-1 relative">
                   <Input
                     placeholder="Message..."
