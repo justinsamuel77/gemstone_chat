@@ -144,18 +144,18 @@ export function Sidebar({
               <h3 className="font-medium truncate">
                 Hello {user.profile?.firstName || user.name}!
               </h3>
-              <p className="text-sm text-gray-400">
+              {/* <p className="text-sm text-gray-400">
                 Good Morning!
-              </p>
+              </p> */}
             </div>
           </div>
-          <div className="flex items-center flex-shrink-0">
+          {/* <div className="flex items-center flex-shrink-0">
             <NotificationSystem
               leads={leads}
               orders={orders}
               onNotificationClick={onNotificationClick}
             />
-          </div>
+          </div> */}
         </div>
       </div>
 
