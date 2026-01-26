@@ -196,6 +196,54 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
     return colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      alert('No orders to export');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = ['Order Number', 'Customer Name', 'Email', 'Phone', 'Status', 'Type', 'Items', 'Total Amount', 'Paid Amount', 'Payment Status', 'Order Date', 'Expected Delivery', 'Assigned To', 'Priority', 'Notes'];
+    
+    // Map orders to CSV rows
+    const rows = filteredOrders.map(order => [
+      order.orderNumber,
+      order.customerName,
+      order.customerEmail,
+      order.customerPhone,
+      order.status,
+      order.type,
+      order.items.map(item => `${item.name} (${item.quantity}x)`).join('; '),
+      order.totalAmount,
+      order.paidAmount,
+      order.paymentStatus,
+      formatDate(order.orderDate),
+      formatDate(order.expectedDelivery),
+      order.assignedTo,
+      order.priority,
+      order.notes || ''
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.map(header => `"${header}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create a Blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getStatusIcon = (status: string) => {
     const icons = {
       'Pending': Clock,
@@ -249,7 +297,7 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
           <p className="text-muted-foreground">Track and manage all customer orders</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={exportToCSV}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

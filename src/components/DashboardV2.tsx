@@ -135,7 +135,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
   const handleAddLeadSubmit = async (leadData: any) => {
     console.log('🔄 Processing lead submission:', leadData);
-    
+
     const leadToCreate = {
       name: leadData.firstName + ' ' + leadData.lastName,
       email: leadData.email,
@@ -158,14 +158,14 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
     console.log('📤 Creating lead with data:', leadToCreate);
     const result = await createLead(leadToCreate);
-    
+
     if (result) {
       console.log('✅ Lead created successfully:', result);
       showSuccessMessage(`Lead "${result.name}" created successfully!`);
-      
+
       // Navigate to leads view and refresh data
       setCurrentView('leads');
-      
+
       // Force refresh after a short delay to ensure server sync
       setTimeout(async () => {
         console.log('🔄 Force refreshing data after lead creation...');
@@ -179,7 +179,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
   const handleAddOrderSubmit = async (orderData: any) => {
     console.log('🔄 Processing order submission:', orderData);
-    
+
     const orderToCreate = {
       customerName: orderData.customerName,
       customerEmail: orderData.customerEmail,
@@ -196,8 +196,8 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
       paidAmount: parseInt(orderData.advanceAmount) || 0,
       paymentStatus: parseInt(orderData.advanceAmount) > 0 ? 'Advance Paid' : 'Pending',
       orderDate: new Date().toISOString().split('T')[0],
-      expectedDelivery: orderData.expectedDelivery ? 
-        new Date(orderData.expectedDelivery).toISOString().split('T')[0] : 
+      expectedDelivery: orderData.expectedDelivery ?
+        new Date(orderData.expectedDelivery).toISOString().split('T')[0] :
         new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       assignedTo: orderData.assignedTo,
       priority: orderData.priority,
@@ -206,14 +206,14 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
     console.log('📤 Creating order with data:', orderToCreate);
     const result = await createOrder(orderToCreate);
-    
+
     if (result) {
       console.log('✅ Order created successfully:', result);
       showSuccessMessage(`Order "${result.orderNumber}" created successfully!`);
-      
+
       // Navigate to orders view and refresh data
       setCurrentView('orders');
-      
+
       // Force refresh after a short delay to ensure server sync
       setTimeout(async () => {
         console.log('🔄 Force refreshing data after order creation...');
@@ -300,7 +300,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
       priority: lead.priority,
       notes: `Converted from lead: ${lead.notes || 'No additional notes'}`
     };
-    
+
     localStorage.setItem('orderFormData', JSON.stringify(orderData));
     setCurrentView('add-order');
   };
@@ -324,9 +324,14 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
               <Button
                 onClick={refreshData}
                 disabled={isLoading}
-                variant="outline"
                 size="sm"
-                className="bg-background/80 backdrop-blur-sm"
+                className="
+    bg-[#1e5128]
+    text-white
+    hover:bg-green-800
+    disabled:bg-green-400
+    backdrop-blur-sm
+  "
               >
                 {isLoading ? (
                   <>
@@ -354,8 +359,8 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                       </>
                     ) : (
                       <>
-                        <Icons.Wifi className="w-4 h-4 text-green-600" />
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">Synced</Badge>
+                        {/* <Icons.Wifi className="w-4 h-4 text-green-600" />
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">Synced</Badge> */}
                       </>
                     )}
                   </div>
@@ -392,12 +397,12 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                   </div>
                 )}
               </div>
-              
+
               <DashboardContent user={user} />
             </div>
           </div>
         );
-      
+
       case 'leads':
         return (
           <div className="relative">
@@ -409,7 +414,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                 </div>
               </div>
             )}
-            <LeadList 
+            <LeadList
               leads={leads}
               onSelectLead={handleSelectLead}
               onAddLead={handleAddLead}
@@ -438,7 +443,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
       case 'lead-detail':
         return selectedLeadId ? (
-          <LeadDetailView 
+          <LeadDetailView
             leadId={selectedLeadId}
             leads={leads}
             onBack={() => setCurrentView('leads')}
@@ -459,7 +464,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
       case 'add-lead':
         return (
-          <AddLeadForm 
+          <AddLeadForm
             onBack={() => setCurrentView('leads')}
             onSubmit={handleAddLeadSubmit}
           />
@@ -468,7 +473,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
       case 'edit-lead':
         const leadToEdit = selectedLeadId ? leads.find(lead => lead.id === selectedLeadId) : null;
         return leadToEdit ? (
-          <EditLeadForm 
+          <EditLeadForm
             lead={leadToEdit}
             onBack={() => setCurrentView('leads')}
             onSubmit={async (leadData) => {
@@ -501,7 +506,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                 </div>
               </div>
             )}
-            <OrderList 
+            <OrderList
               orders={orders}
               onSelectOrder={handleSelectOrder}
               onAddOrder={handleAddOrder}
@@ -523,7 +528,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
       case 'order-detail':
         return selectedOrderId ? (
-          <OrderDetailView 
+          <OrderDetailView
             orderId={selectedOrderId}
             orders={orders}
             onBack={() => setCurrentView('orders')}
@@ -539,7 +544,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
       case 'add-order':
         return (
-          <AddOrderForm 
+          <AddOrderForm
             onBack={() => setCurrentView('orders')}
             onSubmit={handleAddOrderSubmit}
           />
@@ -548,7 +553,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
       case 'edit-order':
         const orderToEdit = selectedOrderId ? orders.find(order => order.id === selectedOrderId) : null;
         return orderToEdit ? (
-          <EditOrderForm 
+          <EditOrderForm
             order={orderToEdit}
             onBack={() => setCurrentView('orders')}
             onSubmit={async (orderData) => {
@@ -571,7 +576,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
       // Other views remain the same...
       case 'inventory':
         return (
-          <InventoryList 
+          <InventoryList
             onSelectItem={handleSelectItem}
             onAddItem={() => setCurrentView('add-inventory')}
           />
@@ -684,7 +689,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
       case 'notifications':
         return (
           <div className="p-6">
-            <NotificationScreen 
+            <NotificationScreen
               onNotificationClick={handleNotificationClick}
             />
           </div>
@@ -692,7 +697,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
       case 'profile':
         return (
-          <ProfileManagement 
+          <ProfileManagement
             user={user}
             onUserUpdate={handleUserUpdate}
           />
@@ -700,22 +705,22 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
 
       case 'whatsapp-chat':
         return (
-          <WhatsAppChat 
+          <WhatsAppChat
             onBack={() => {
               setCurrentView('dashboard');
               setSelectedChatContact(null);
-            }} 
+            }}
             selectedContactInfo={selectedChatContact}
           />
         );
 
       case 'instagram-chat':
         return (
-          <InstagramChat 
+          <InstagramChat
             onBack={() => {
               setCurrentView('dashboard');
               setSelectedChatContact(null);
-            }} 
+            }}
             selectedContactInfo={selectedChatContact}
           />
         );
@@ -735,12 +740,12 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
               <Alert className="border-orange-200 bg-orange-50">
                 <Icons.AlertTriangle className="h-4 w-4 text-orange-600" />
                 <AlertDescription className="text-orange-800">
-                  <strong>Database Setup Required:</strong> Your database tables are not set up yet. 
+                  <strong>Database Setup Required:</strong> Your database tables are not set up yet.
                   This system now uses proper Supabase database tables for better data persistence.
                   <br />
                   <div className="mt-2 flex gap-2">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       onClick={() => setCurrentView('server-diagnostic')}
                       className="hover:bg-orange-700 text-white bg-black"
                     >
@@ -753,7 +758,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {/* Data Status Card */}
             <Card>
               <CardHeader>
@@ -777,7 +782,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                     <div className="text-sm text-muted-foreground">Dealers</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {error ? (
@@ -814,8 +819,8 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
             </Card>
 
             <DatabaseSetup />
-            
-            <DataSyncHelper 
+
+            <DataSyncHelper
               currentLeads={leads}
               currentOrders={orders}
               onDataUpdate={(newLeads, newOrders) => {
@@ -823,7 +828,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
                 refreshData();
               }}
             />
-            
+
             <ServerDiagnostic />
           </div>
         );
@@ -837,8 +842,8 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sticky Sidebar */}
       <div className="sticky top-0 h-screen">
-        <Sidebar 
-          user={user} 
+        <Sidebar
+          user={user}
           onLogout={onLogout}
           currentView={currentView}
           onNavigate={handleNavigate}
@@ -847,7 +852,7 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
           onNotificationClick={handleNotificationClick}
         />
       </div>
-      
+
       {/* Main Content Area - Responsive */}
       <div className="flex-1 overflow-auto">
         {/* Success Message */}
@@ -859,10 +864,10 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
             </div>
           </div>
         )}
-        
+
         {/* Messaging Integration - Hidden but active */}
         <MessagingIntegration onIncomingMessage={handleIncomingMessage} />
-        
+
         {/* Main Content */}
         {renderMainContent()}
       </div>
