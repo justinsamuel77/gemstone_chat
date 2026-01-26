@@ -805,10 +805,17 @@ export function Dashboard({ user, onLogout, onUserUpdate }: DashboardProps) {
       customerName: lead.name,
       customerEmail: lead.email,
       customerPhone: lead.phone,
-      productName: lead.company || 'Custom Jewelry',
-      estimatedValue: lead.value,
+      customerAddress: lead.address || '',
+      orderType: 'Custom Order',
       priority: lead.priority,
-      notes: `Converted from lead: ${lead.notes || 'No additional notes'}`
+      assignedTo: lead.assignedTo || '',
+      productName: lead.company || 'Custom Jewelry',
+      category: 'Custom',
+      totalAmount: lead.value.toString(),
+      advanceAmount: (lead.value * 0.5).toString(), // 50% advance
+      paymentMethod: 'Pending',
+      notes: lead.notes || `Converted from lead: ${lead.name}`,
+      specialInstructions: lead.estimatedDeliveryDate ? `Delivery by: ${lead.estimatedDeliveryDate}` : ''
     };
     
     // Store the pre-populated data temporarily

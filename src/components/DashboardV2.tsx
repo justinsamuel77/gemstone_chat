@@ -14,21 +14,15 @@ import { EditOrderForm } from './EditOrderForm';
 import { DealerList } from './DealerList';
 import { AddDealerForm } from './AddDealerForm';
 import { EditDealerForm } from './EditDealerForm';
-import { EmployeeList } from './EmployeeList';
 import { NotificationSystem } from './NotificationSystem';
 import { ProfileManagement } from './ProfileManagement';
 import { WhatsAppChat } from './WhatsAppChat';
 import { InstagramChat } from './InstagramChat';
 import { ServerDiagnostic } from './ServerDiagnostic';
-import { DataSyncHelper } from './DataSyncHelper';
-import { DatabaseSetup } from './DatabaseSetup';
-import { NotificationScreen } from './NotificationScreen';
-import { useDataManager } from './DataManager';
+import { apiService } from '../utils/supabase/api';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Icons } from './ui/icons';
+import { AlertTriangle, Wifi, WifiOff, RefreshCw, Loader2, CheckCircle } from 'lucide-react';
 
 interface User {
   id: string;
@@ -42,51 +36,448 @@ interface User {
   };
 }
 
-interface DashboardV2Props {
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'New' | 'Contacted' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
+  source: string;
+  assignedTo: string;
+  lastContact: string;
+  value: number;
+  priority: 'High' | 'Medium' | 'Low';
+  createdAt: string;
+  company: string;
+  // Additional fields from enhanced form
+  dateOfBirth?: string;
+  marriageDate?: string;
+  address?: string;
+  netWeight?: string;
+  estimatedDeliveryDate?: string;
+  notes?: string;
+  productImage?: File | null;
+  instagramUsername?: string;
+}
+
+interface Order {
+  id: string;
+  user_id?: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  status: 'Pending' | 'Confirmed' | 'In Production' | 'Ready' | 'Delivered' | 'Cancelled';
+  type: 'Sale' | 'Custom Order' | 'Repair' | 'Appraisal';
+  items: Array<{
+    name: string;
+    category: string;
+    quantity: number;
+    price: number;
+  }>;
+  total_amount: number;
+  paid_amount: number;
+  payment_status: 'Paid' | 'Partial' | 'Pending' | 'Overdue' | 'Advance Paid';
+  order_date: string;
+  expected_delivery: string;
+  assigned_to: string;
+  priority: 'High' | 'Medium' | 'Low';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface Dealer {
+  id: string;
+  name: string;
+  phone: string;
+  location: string;
+  company: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  email?: string;
+  specialization?: string;
+  address?: string;
+  notes?: string;
+}
+
+interface DashboardProps {
   user: User;
   onLogout: () => void;
   onUserUpdate?: (updatedUser: User) => void;
 }
 
-export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) {
-  const {
-    leads,
-    orders,
-    dealers,
-    employees,
-    inventory,
-    inventoryTransactions,
-    isLoading,
-    error,
-    refreshData,
-    createLead,
-    updateLead,
-    deleteLead,
-    createOrder,
-    updateOrder,
-    deleteOrder,
-    createDealer,
-    updateDealer,
-    deleteDealer,
-    createEmployee,
-    updateEmployee,
-    deleteEmployee,
-    createInventory,
-    updateInventory,
-    createInventoryTransaction
-  } = useDataManager();
+// Initial data
+const initialLeads: Lead[] = [
+  {
+    id: '1',
+    name: 'Priya Sharma',
+    email: 'priya.sharma@email.com',
+    phone: '+91 98765 43210',
+    status: 'New',
+    source: 'Website',
+    assignedTo: 'Jeweler Rajesh',
+    lastContact: '2024-01-15',
+    value: 85000,
+    priority: 'High',
+    createdAt: '2024-01-10',
+    company: 'Looking for engagement ring',
+    dateOfBirth: '1995-03-15',
+    address: '123 MG Road, Mumbai, Maharashtra',
+    netWeight: '25.5 grams',
+    notes: 'Interested in diamond solitaire rings'
+  },
+  {
+    id: '2',
+    name: 'Rohit Mehta',
+    email: 'rohit.mehta@email.com',
+    phone: '+91 87654 32109',
+    status: 'Contacted',
+    source: 'Referral',
+    assignedTo: 'Sales Manager Kavya',
+    lastContact: '2024-01-14',
+    value: 125000,
+    priority: 'High',
+    createdAt: '2024-01-08',
+    company: 'Wedding jewelry set',
+    marriageDate: '2024-04-15',
+    address: '456 Park Street, Kolkata, West Bengal',
+    netWeight: '45.2 grams',
+    notes: 'Planning complete bridal set'
+  },
+  {
+    id: '3',
+    name: 'Anjali Patel',
+    email: 'anjali.patel@email.com',
+    phone: '+91 76543 21098',
+    status: 'Qualified',
+    source: 'Social Media',
+    assignedTo: 'Designer Arjun',
+    lastContact: '2024-01-13',
+    value: 45000,
+    priority: 'Medium',
+    createdAt: '2024-01-05',
+    company: 'Custom necklace design',
+    dateOfBirth: '1988-07-22',
+    address: '789 Ring Road, Ahmedabad, Gujarat',
+    netWeight: '18.7 grams',
+    notes: 'Wants traditional Gujarati design'
+  }
+];
 
+const initialOrders: Order[] = [
+  {
+    id: '1',
+    order_number: 'ORD-2344',
+    customer_name: 'Priya Mehta',
+    customer_email: 'Priya.Mehta@gmail.com',
+    customer_phone: '+91 93849 81389',
+    status: 'In Production',
+    type: 'Custom Order',
+    items: [
+      { name: 'Custom Gold Bridal Ring', category: 'Rings', quantity: 1, price: 1100500 }
+    ],
+    total_amount: 1100500,
+    paid_amount: 1000500,
+    payment_status: 'Advance Paid',
+    order_date: '2024-01-10',
+    expected_delivery: '2024-02-15',
+    assigned_to: 'Rahul',
+    priority: 'High',
+    notes: 'Customer requested antique finish and adjustable lock'
+  },
+  {
+    id: '2',
+    order_number: 'ORD-2024-002',
+    customer_name: 'Rajesh Kumar',
+    customer_email: 'rajesh.kumar@email.com',
+    customer_phone: '+91 98765 43210',
+    status: 'Ready',
+    type: 'Sale',
+    items: [
+      { name: 'Gold Tennis Bracelet', category: 'Bracelets', quantity: 1, price: 120000 },
+      { name: 'Pearl Earrings', category: 'Earrings', quantity: 1, price: 80000 }
+    ],
+    total_amount: 200000,
+    paid_amount: 200000,
+    payment_status: 'Paid',
+    order_date: '2024-01-08',
+    expected_delivery: '2024-01-20',
+    assigned_to: 'Sales Associate Maria',
+    priority: 'Medium'
+  }
+];
+
+export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardProps) {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedDealerId, setSelectedDealerId] = useState<string | null>(null);
   const [selectedChatContact, setSelectedChatContact] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  const [isConnectedToServer, setIsConnectedToServer] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Dynamic state for leads, orders, and dealers
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [dealers, setDealers] = useState<Dealer[]>([]);
 
-  const showSuccessMessage = (message: string) => {
-    setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(null), 5000);
+  console.log(orders , 'THE ORDERS IN DASHBOARD V2');
+
+  // Load data from Supabase on component mount
+  useEffect(() => {
+    const initializeData = async () => {
+      // Only load data if we have a valid user and access token
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken && user?.id) {
+        console.log('🚀 User authenticated, attempting to load data from server...');
+        setDataLoadError(null);
+        
+        try {
+          // Load all data concurrently
+          await Promise.all([
+            loadLeads(),
+            loadOrders(), 
+            loadDealers()
+          ]);
+          console.log('🎉 All data loading attempts completed');
+        } catch (error) {
+          console.error('💥 Error during data initialization:', error);
+          setDataLoadError('Failed to load data from server. Using local data.');
+        }
+      } else {
+        console.warn('⚠️ No access token or user found, using initial data');
+        // Use initial data as fallback
+        setLeads(initialLeads);
+        setOrders(initialOrders);
+        setDealers([]);
+        setDataLoadError('Not authenticated - using demo data');
+      }
+    };
+
+    initializeData();
+  }, [user?.id]); // Re-run when user changes
+
+  // Additional effect to handle manual refresh and view changes
+  useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken && user?.id) {
+      // Add a small delay to ensure any previous operations have completed
+      const refreshData = async () => {
+        if (currentView === 'leads') {
+          console.log('🔄 View changed to leads, refreshing data...');
+          await loadLeads();
+        } else if (currentView === 'orders') {
+          console.log('🔄 View changed to orders, refreshing data...');
+          await loadOrders();
+        } else if (currentView === 'dealers') {
+          console.log('🔄 View changed to dealers, refreshing data...');
+          await loadDealers();
+        }
+      };
+      
+      const timeoutId = setTimeout(refreshData, 100); // Small delay to allow state updates
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentView]);
+
+  const loadLeads = async () => {
+    console.log('🔄 Starting to load leads...');
+    setIsLoading(true);
+    
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const user = localStorage.getItem('user');
+      
+      console.log('🔑 Access token exists:', !!accessToken);
+      console.log('👤 User data exists:', !!user);
+      
+      if (!accessToken) {
+        console.warn('⚠️ No access token found - using initial leads data');
+        setLeads(initialLeads);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('📡 Making API call to get leads...');
+      const response = await apiService.getLeads();
+      console.log('📥 Leads API response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasLeads: !!(response.data?.leads),
+        leadCount: response.data?.leads?.length || 0,
+        error: response.error
+      });
+      
+      if (response.success && response.data && response.data.leads) {
+        console.log(`✅ Successfully loaded ${response.data.leads.length} leads from server`);
+        console.log('🔍 Lead data sample:', response.data.leads[0]);
+        
+        // Validate and filter leads data
+        const validLeads = response.data.leads.filter((lead: any) => {
+          const isValid = lead && lead.id && lead.name;
+          if (!isValid) {
+            console.warn('⚠️ Invalid lead data found:', lead);
+          }
+          return isValid;
+        });
+        
+        console.log(`📊 Setting ${validLeads.length} valid leads`);
+        setLeads(validLeads);
+        setIsConnectedToServer(true);
+      } else {
+        console.error('❌ Failed to load leads from server:', response.error);
+        console.log('🔄 Falling back to initial leads data');
+        setLeads(initialLeads);
+        setIsConnectedToServer(false);
+        
+        // Show user-friendly error
+        if (response.error) {
+          console.warn('API Error Details:', response.error);
+          setDataLoadError(`Failed to load leads: ${response.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('💥 Exception while loading leads:', error);
+      console.log('🔄 Using initial leads data due to exception');
+      setLeads(initialLeads);
+      setIsConnectedToServer(false);
+      
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        setDataLoadError(`Connection error: ${error.message}`);
+      }
+    } finally {
+      setIsLoading(false);
+      console.log('✨ Leads loading process completed');
+    }
+  };
+
+  const loadDealers = async () => {
+    console.log('🔄 Starting to load dealers...');
+    
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const user = localStorage.getItem('user');
+      
+      console.log('🔑 Access token exists:', !!accessToken);
+      console.log('👤 User data exists:', !!user);
+      
+      if (!accessToken) {
+        console.warn('⚠️ No access token found - using empty dealers array');
+        setDealers([]);
+        return;
+      }
+
+      console.log('📡 Making API call to get dealers...');
+      const response = await apiService.getDealers();
+      console.log('📥 Dealers API response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasDealers: !!(response.data?.dealers),
+        dealerCount: response.data?.dealers?.length || 0,
+        error: response.error
+      });
+      
+      if (response.success && response.data && response.data.dealers) {
+        console.log(`✅ Successfully loaded ${response.data.dealers.length} dealers from server`);
+        setDealers(response.data.dealers);
+      } else {
+        console.error('❌ Failed to load dealers from server:', response.error);
+        console.log('🔄 Using empty dealers array');
+        setDealers([]);
+        
+        // Show user-friendly error
+        if (response.error) {
+          console.warn('API Error Details:', response.error);
+        }
+      }
+    } catch (error) {
+      console.error('💥 Exception while loading dealers:', error);
+      console.log('🔄 Using empty dealers array due to exception');
+      setDealers([]);
+      
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+    } finally {
+      console.log('✨ Dealers loading process completed');
+    }
+  };
+
+  const loadOrders = async () => {
+    console.log('🔄 Starting to load orders...');
+    
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const user = localStorage.getItem('user');
+      
+      console.log('🔑 Access token exists:', !!accessToken);
+      console.log('👤 User data exists:', !!user);
+      
+      if (!accessToken) {
+        console.warn('⚠️ No access token found - using initial orders data');
+        setOrders(initialOrders);
+        return;
+      }
+
+      console.log('📡 Making API call to get orders...');
+      const response = await apiService.getOrders();
+      console.log('📥 Orders API response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasOrders: !!(response.data?.orders),
+        orderCount: response.data?.orders?.length || 0,
+        error: response.error
+      });
+      
+      if (response.success && response.data && response.data.orders) {
+        console.log(`✅ Successfully loaded ${response.data.orders.length} orders from server`);
+        console.log('🔍 Order data sample:', response.data.orders[0]);
+        
+        // Validate and filter orders data
+        console.log(response.data.orders, 'OGHHJJJJ')
+        const validOrders = response.data.orders.filter((order: any) => {
+          const isValid = order && order.id && order.customer_name;
+          console.log('Order validation:', order.id, isValid);
+          if (!isValid) {
+            console.warn('⚠️ Invalid order data found:', order);
+          }
+          return isValid;
+        });
+        
+        console.log(`📊 Setting ${validOrders.length} valid orders`);
+        setOrders(validOrders);
+      } else {
+        console.error('❌ Failed to load orders from server:', response.error);
+        console.log('🔄 Falling back to initial orders data');
+        setOrders(initialOrders);
+        
+        // Show user-friendly error
+        if (response.error) {
+          console.warn('API Error Details:', response.error);
+        }
+      }
+    } catch (error) {
+      console.error('💥 Exception while loading orders:', error);
+      console.log('🔄 Using initial orders data due to exception');
+      setOrders(initialOrders);
+      
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+    } finally {
+      console.log('✨ Orders loading process completed');
+    }
   };
 
   const handleNavigate = (view: string) => {
@@ -129,107 +520,107 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
     setCurrentView('add-order');
   };
 
+  const handleAddItem = () => {
+    setCurrentView('add-inventory');
+  };
+
   const handleAddDealer = () => {
     setCurrentView('add-dealer');
   };
 
+  const generateId = () => {
+    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  };
+
+  const generateOrderNumber = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `ORD-${year}${month}${day}-${random}`;
+  };
+
   const handleAddLeadSubmit = async (leadData: any) => {
-    console.log('🔄 Processing lead submission:', leadData);
+    console.log('🔄 Starting lead creation process...');
+    setIsLoading(true);
+    
+    try {
+      const leadToCreate = {
+        name: leadData.firstName + ' ' + leadData.lastName,
+        email: leadData.email,
+        phone: leadData.phone,
+        status: 'New',
+        source: leadData.source || 'Direct',
+        assignedTo: leadData.assignedTo || 'Unassigned',
+        lastContact: new Date().toISOString().split('T')[0],
+        value: leadData.estimatedValue || 0,
+        priority: leadData.priority || 'Medium',
+        company: leadData.interests || 'General inquiry',
+        // Additional fields from the enhanced form
+        dateOfBirth: leadData.dateOfBirth,
+        marriageDate: leadData.marriageDate,
+        address: leadData.address,
+        netWeight: leadData.netWeight,
+        estimatedDeliveryDate: leadData.estimatedDeliveryDate,
+        notes: leadData.notes,
+        instagramUsername: leadData.instagramUsername
+      };
 
-    const leadToCreate = {
-      name: leadData.firstName + ' ' + leadData.lastName,
-      email: leadData.email,
-      phone: leadData.phone,
-      status: 'New',
-      source: leadData.source || 'Direct',
-      assignedTo: leadData.assignedTo || 'Unassigned',
-      lastContact: new Date().toISOString().split('T')[0],
-      value: leadData.estimatedValue || 0,
-      priority: leadData.priority || 'Medium',
-      company: leadData.interests || 'General inquiry',
-      dateOfBirth: leadData.dateOfBirth,
-      marriageDate: leadData.marriageDate,
-      address: leadData.address,
-      netWeight: leadData.netWeight,
-      estimatedDeliveryDate: leadData.estimatedDeliveryDate,
-      notes: leadData.notes,
-      instagramUsername: leadData.instagramUsername
-    };
-
-    console.log('📤 Creating lead with data:', leadToCreate);
-    const result = await createLead(leadToCreate);
-
-    if (result) {
-      console.log('✅ Lead created successfully:', result);
-      showSuccessMessage(`Lead "${result.name}" created successfully!`);
-
-      // Navigate to leads view and refresh data
-      setCurrentView('leads');
-
-      // Force refresh after a short delay to ensure server sync
-      setTimeout(async () => {
-        console.log('🔄 Force refreshing data after lead creation...');
-        await refreshData();
-      }, 1000);
-    } else {
-      console.error('❌ Failed to create lead');
-      showSuccessMessage('Failed to create lead. Please check the server diagnostics.');
-    }
-  };
-
-  const handleAddOrderSubmit = async (orderData: any) => {
-    console.log('🔄 Processing order submission:', orderData);
-
-    const orderToCreate = {
-      customerName: orderData.customerName,
-      customerEmail: orderData.customerEmail,
-      customerPhone: orderData.customerPhone,
-      status: 'Pending',
-      type: orderData.orderType,
-      items: [{
-        name: orderData.productName,
-        category: orderData.category,
-        quantity: 1,
-        price: parseInt(orderData.totalAmount) || 0
-      }],
-      totalAmount: parseInt(orderData.totalAmount) || 0,
-      paidAmount: parseInt(orderData.advanceAmount) || 0,
-      paymentStatus: parseInt(orderData.advanceAmount) > 0 ? 'Advance Paid' : 'Pending',
-      orderDate: new Date().toISOString().split('T')[0],
-      expectedDelivery: orderData.expectedDelivery ?
-        new Date(orderData.expectedDelivery).toISOString().split('T')[0] :
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      assignedTo: orderData.assignedTo,
-      priority: orderData.priority,
-      notes: orderData.notes || orderData.specialInstructions || ''
-    };
-
-    console.log('📤 Creating order with data:', orderToCreate);
-    const result = await createOrder(orderToCreate);
-
-    if (result) {
-      console.log('✅ Order created successfully:', result);
-      showSuccessMessage(`Order "${result.orderNumber}" created successfully!`);
-
-      // Navigate to orders view and refresh data
-      setCurrentView('orders');
-
-      // Force refresh after a short delay to ensure server sync
-      setTimeout(async () => {
-        console.log('🔄 Force refreshing data after order creation...');
-        await refreshData();
-      }, 1000);
-    } else {
-      console.error('❌ Failed to create order');
-      showSuccessMessage('Failed to create order. Please check the server diagnostics.');
-    }
-  };
-
-  const handleAddDealerSubmit = async (dealerData: any) => {
-    const result = await createDealer(dealerData);
-    if (result) {
-      showSuccessMessage(`Dealer "${result.name}" created successfully!`);
-      setCurrentView('dealers');
+      console.log('📤 Sending lead data to server:', leadToCreate);
+      const response = await apiService.createLead(leadToCreate);
+      
+      console.log('📥 Server response:', response);
+      
+      if (response.success && response.data?.lead) {
+        console.log('✅ Lead created successfully:', response.data.lead);
+        
+        // Update local state with the new lead immediately
+        const newLead = response.data.lead;
+        setLeads(prevLeads => {
+          // Make sure we don't duplicate leads
+          const filteredLeads = prevLeads.filter(lead => lead.id !== newLead.id);
+          const newLeads = [newLead, ...filteredLeads];
+          console.log(`📊 Updated leads list: ${newLeads.length} total leads`);
+          console.log('🔍 New lead details:', newLead);
+          return newLeads;
+        });
+        
+        // Set connection status to true since we successfully communicated with server
+        setIsConnectedToServer(true);
+        setDataLoadError(null);
+        
+        // Show success message
+        setSuccessMessage(`Lead "${response.data.lead.name}" created successfully!`);
+        setTimeout(() => setSuccessMessage(null), 5000); // Clear after 5 seconds
+        
+        // Navigate back to leads view first
+        setCurrentView('leads');
+        
+        // Force refresh leads data to ensure it shows the new lead
+        console.log('🔄 Refreshing leads list to show new lead...');
+        setTimeout(async () => {
+          await loadLeads();
+          console.log('✅ Leads refreshed after navigation');
+        }, 200);
+        
+        console.log('🎉 Lead creation completed successfully');
+      } else {
+        console.error('❌ Failed to create lead:', response.error);
+        setIsConnectedToServer(false);
+        setDataLoadError(response.error || 'Failed to create lead');
+        alert(`Failed to create lead: ${response.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('💥 Exception during lead creation:', error);
+      setIsConnectedToServer(false);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setDataLoadError(`Lead creation failed: ${errorMessage}`);
+      alert(`Failed to create lead: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+      console.log('✨ Lead creation process completed');
     }
   };
 
@@ -244,37 +635,161 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
     });
 
     if (!existingLead) {
-      // Create new lead from incoming message
-      const leadToCreate = {
-        name: message.senderName,
-        email: message.platform === 'whatsapp' ? '' : `${message.instagramUsername}@instagram.com`,
-        phone: message.phoneNumber || '',
-        status: 'New',
-        source: message.platform === 'whatsapp' ? 'WhatsApp' : 'Instagram',
-        assignedTo: 'Unassigned',
-        lastContact: message.timestamp.toISOString().split('T')[0],
-        value: 0,
-        priority: 'Medium',
-        company: message.message.substring(0, 100) + (message.message.length > 100 ? '...' : ''),
-        notes: `First message: "${message.message}"`,
-        instagramUsername: message.instagramUsername
-      };
+      try {
+        // Create new lead from incoming message
+        const leadToCreate = {
+          name: message.senderName,
+          email: message.platform === 'whatsapp' ? '' : `${message.instagramUsername}@instagram.com`,
+          phone: message.phoneNumber || '',
+          status: 'New',
+          source: message.platform === 'whatsapp' ? 'WhatsApp' : 'Instagram',
+          assignedTo: 'Unassigned',
+          lastContact: message.timestamp.toISOString().split('T')[0],
+          value: 0,
+          priority: 'Medium',
+          company: message.message.substring(0, 100) + (message.message.length > 100 ? '...' : ''),
+          notes: `First message: "${message.message}"`,
+          instagramUsername: message.instagramUsername
+        };
 
-      const result = await createLead(leadToCreate);
-      if (result) {
-        console.log(`New ${message.platform} lead created: ${message.senderName}`);
+        const response = await apiService.createLead(leadToCreate);
+        if (response.success && response.data) {
+          setLeads(prevLeads => [response.data.lead, ...prevLeads]);
+          console.log(`New ${message.platform} lead created: ${message.senderName}`);
+        }
+      } catch (error) {
+        console.error('Error creating lead from message:', error);
       }
     } else {
-      // Update existing lead's last contact
-      const updatedNotes = existingLead.notes + `\n\nNew message (${message.timestamp.toLocaleDateString()}): "${message.message}"`;
-      await updateLead(existingLead.id, {
-        lastContact: message.timestamp.toISOString().split('T')[0],
-        notes: updatedNotes
-      });
+      try {
+        // Update existing lead's last contact
+        const updatedNotes = existingLead.notes + `\n\nNew message (${message.timestamp.toLocaleDateString()}): "${message.message}"`;
+        const response = await apiService.updateLead(existingLead.id, {
+          lastContact: message.timestamp.toISOString().split('T')[0],
+          notes: updatedNotes
+        });
+        
+        if (response.success && response.data) {
+          setLeads(prevLeads => prevLeads.map(lead => 
+            lead.id === existingLead.id ? response.data.lead : lead
+          ));
+        }
+      } catch (error) {
+        console.error('Error updating lead from message:', error);
+      }
+    }
+  };
+
+  const handleAddOrderSubmit = async (orderData: any) => {
+    console.log('🔄 Starting order creation process...');
+    setIsLoading(true);
+    
+    try {
+      const orderToCreate = {
+        customer_name: orderData.customerName,
+        customer_email: orderData.customerEmail,
+        customer_phone: orderData.customerPhone,
+        status: 'Pending',
+        type: orderData.orderType,
+        items: [{
+          name: orderData.productName,
+          category: orderData.category,
+          quantity: 1,
+          price: parseInt(orderData.totalAmount) || 0
+        }],
+        total_amount: parseInt(orderData.totalAmount) || 0,
+        paid_amount: parseInt(orderData.advanceAmount) || 0,
+        payment_status: parseInt(orderData.advanceAmount) > 0 ? 'Advance Paid' : 'Pending',
+        order_date: new Date().toISOString().split('T')[0],
+        expected_delivery: orderData.expectedDelivery ? 
+          new Date(orderData.expectedDelivery).toISOString().split('T')[0] : 
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        assigned_to: orderData.assignedTo,
+        priority: orderData.priority,
+        notes: orderData.notes || orderData.specialInstructions || ''
+      };
+
+      console.log('📤 Sending order data to server:', orderToCreate);
+      const response = await apiService.createOrder(orderToCreate);
+      
+      console.log('📥 Server response:', response);
+      
+      if (response.success && response.data?.order) {
+        console.log('✅ Order created successfully:', response.data.order);
+        
+        // Update local state with the new order immediately
+        const newOrder = response.data.order;
+        setOrders(prevOrders => {
+          // Make sure we don't duplicate orders
+          const filteredOrders = prevOrders.filter(order => order.id !== newOrder.id);
+          const newOrders = [newOrder, ...filteredOrders];
+          console.log(`📊 Updated orders list: ${newOrders.length} total orders`);
+          console.log('🔍 New order details:', newOrder);
+          return newOrders;
+        });
+        
+        // Set connection status to true since we successfully communicated with server
+        setIsConnectedToServer(true);
+        setDataLoadError(null);
+        
+        // Show success message
+        setSuccessMessage(`Order "${response.data.order.order_number}" created successfully!`);
+        setTimeout(() => setSuccessMessage(null), 5000); // Clear after 5 seconds
+        
+        // Navigate back to orders view first
+        setCurrentView('orders');
+        
+        // Force refresh orders data to ensure it shows the new order
+        console.log('🔄 Refreshing orders list to show new order...');
+        setTimeout(async () => {
+          await loadOrders();
+          console.log('✅ Orders refreshed after navigation');
+        }, 200);
+        
+        console.log('🎉 Order creation completed successfully');
+      } else {
+        console.error('❌ Failed to create order:', response.error);
+        setIsConnectedToServer(false);
+        setDataLoadError(response.error || 'Failed to create order');
+        alert(`Failed to create order: ${response.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('💥 Exception during order creation:', error);
+      setIsConnectedToServer(false);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setDataLoadError(`Order creation failed: ${errorMessage}`);
+      alert(`Failed to create order: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+      console.log('✨ Order creation process completed');
+    }
+  };
+
+  const handleAddItemSubmit = (itemData: any) => {
+    console.log('New inventory item data:', itemData);
+    // Here you would typically save the inventory data to your backend
+    setCurrentView('inventory');
+  };
+
+  const handleAddDealerSubmit = async (dealerData: any) => {
+    try {
+      const response = await apiService.createDealer(dealerData);
+      if (response.success && response.data) {
+        setDealers(prevDealers => [response.data.dealer, ...prevDealers]);
+        setCurrentView('dealers');
+      } else {
+        console.error('Error creating dealer:', response.error);
+        alert('Failed to create dealer. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating dealer:', error);
+      alert('Failed to create dealer. Please try again.');
     }
   };
 
   const handleNotificationClick = (notification: any) => {
+    // Navigate to the related item when notification is clicked
     if (notification.relatedType === 'lead' && notification.relatedId) {
       setSelectedLeadId(notification.relatedId);
       setCurrentView('lead-detail');
@@ -290,21 +805,31 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
     }
   };
 
-  const handleConvertToOrder = (lead: any) => {
+  // Lead conversion to order
+  const handleConvertToOrder = (lead: Lead) => {
+    // Create order directly from lead data
     const orderData = {
       customerName: lead.name,
       customerEmail: lead.email,
       customerPhone: lead.phone,
-      productName: lead.company || 'Custom Jewelry',
-      estimatedValue: lead.value,
+      customerAddress: lead.address || '',
+      orderType: 'Custom Order',
       priority: lead.priority,
-      notes: `Converted from lead: ${lead.notes || 'No additional notes'}`
+      assignedTo: lead.assignedTo || '',
+      productName: lead.company || 'Custom Jewelry',
+      category: 'Custom',
+      totalAmount: lead.value.toString(),
+      advanceAmount: (lead.value * 0.5).toString(), // 50% advance
+      paymentMethod: 'Pending',
+      notes: lead.notes || `Converted from lead: ${lead.name}`,
+      specialInstructions: lead.estimatedDeliveryDate ? `Delivery by: ${lead.estimatedDeliveryDate}` : ''
     };
-
-    localStorage.setItem('orderFormData', JSON.stringify(orderData));
-    setCurrentView('add-order');
+    
+    // Call handleAddOrderSubmit to create the order directly
+    handleAddOrderSubmit(orderData);
   };
 
+  // Navigate to chat with specific contact
   const handleNavigateToChat = (platform: 'whatsapp' | 'instagram', contactInfo: any) => {
     setSelectedChatContact(contactInfo);
     if (platform === 'whatsapp') {
@@ -314,107 +839,109 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
     }
   };
 
+  // Force refresh all data from server
+  const handleForceRefresh = async () => {
+    console.log('🔄 Force refreshing all data from server...');
+    setIsLoading(true);
+    setDataLoadError(null);
+    
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken && user?.id) {
+        // Load all data concurrently
+        await Promise.all([
+          loadLeads(),
+          loadOrders(),
+          loadDealers()
+        ]);
+        console.log('✅ Force refresh completed successfully');
+        
+        // Log current state for debugging
+        console.log('📊 Current data state after refresh:');
+        console.log('- Leads count:', leads.length);
+        console.log('- Orders count:', orders.length);
+        console.log('- Dealers count:', dealers.length);
+      } else {
+        console.warn('⚠️ No authentication found during force refresh');
+        setDataLoadError('Not authenticated - please sign in again');
+      }
+    } catch (error) {
+      console.error('💥 Error during force refresh:', error);
+      setDataLoadError('Failed to refresh data from server');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Debug function to check current state
+  const debugCurrentState = () => {
+    console.log('🔍 CURRENT APP STATE DEBUG:');
+    console.log('- Current view:', currentView);
+    console.log('- User ID:', user?.id);
+    console.log('- Access token exists:', !!localStorage.getItem('accessToken'));
+    console.log('- Is loading:', isLoading);
+    console.log('- Is connected to server:', isConnectedToServer);
+    console.log('- Data load error:', dataLoadError);
+    console.log('- Leads count:', leads.length);
+    console.log('- Orders count:', orders.length);
+    console.log('- Dealers count:', dealers.length);
+    console.log('- Leads data:', leads);
+    console.log('- Orders data:', orders);
+  };
+
+  // Add debug function to window for easy access
+  useEffect(() => {
+    (window as any).debugDashboard = debugCurrentState;
+    return () => {
+      delete (window as any).debugDashboard;
+    };
+  }, [currentView, leads, orders, dealers, isLoading, isConnectedToServer, dataLoadError]);
+
+  // Check for data inconsistencies after operations
+  useEffect(() => {
+    if (isConnectedToServer && (leads.length > 0 || orders.length > 0)) {
+      // Add a small indicator that data might need verification
+      const hasRecentActivity = successMessage !== null;
+      if (hasRecentActivity) {
+        console.log('🔍 Recent activity detected - consider running data consistency check if needed');
+      }
+    }
+  }, [leads.length, orders.length, successMessage, isConnectedToServer]);
+
   const renderMainContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return (
-          <div className="relative">
-            {/* Quick refresh button */}
-            <div className="absolute top-4 right-4 z-10">
-              <Button
-                onClick={refreshData}
-                disabled={isLoading}
-                size="sm"
-                className="
-    bg-[#1e5128]
-    text-white
-    hover:bg-green-800
-    disabled:bg-green-400
-    backdrop-blur-sm
-  "
-              >
-                {isLoading ? (
-                  <>
-                    <Icons.RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <Icons.RefreshCw className="w-4 h-4 mr-2" />
-                    Refresh Data
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="space-y-6">
-              {/* Data Status Summary */}
-              <div className="bg-white rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Data Overview</h3>
-                  <div className="flex items-center gap-2">
-                    {error ? (
-                      <>
-                        <Icons.WifiOff className="w-4 h-4 text-red-600" />
-                        <Badge variant="destructive">Data Issues</Badge>
-                      </>
-                    ) : (
-                      <>
-                        {/* <Icons.Wifi className="w-4 h-4 text-green-600" />
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">Synced</Badge> */}
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-primary/5 rounded-lg">
-                    <div className="text-2xl font-bold text-primary mb-1">{leads.length}</div>
-                    <div className="text-sm text-muted-foreground">Active Leads</div>
-                  </div>
-                  <div className="text-center p-4 bg-primary/5 rounded-lg">
-                    <div className="text-2xl font-bold text-primary mb-1">{orders.length}</div>
-                    <div className="text-sm text-muted-foreground">Total Orders</div>
-                  </div>
-                  <div className="text-center p-4 bg-primary/5 rounded-lg">
-                    <div className="text-2xl font-bold text-primary mb-1">{dealers.length}</div>
-                    <div className="text-sm text-muted-foreground">Dealers</div>
-                  </div>
-                </div>
-                {error && (
-                  <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-red-800">Data Synchronization Issue</p>
-                        <p className="text-xs text-red-600">{error}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setCurrentView('server-diagnostic')}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        Fix Issues
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <DashboardContent user={user} />
-            </div>
-          </div>
-        );
-
+        return <DashboardContent user={user} />;
+      
+      // Lead Management
       case 'leads':
+        if (isLoading) {
+          return (
+            <div className="p-6 flex items-center justify-center min-h-[400px]">
+              <div className="text-center space-y-4">
+                <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+                <div className="space-y-2">
+                  <p className="text-muted-foreground">Loading leads from server...</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isConnectedToServer ? 'Connected to server' : 'Checking connection...'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        }
         return (
           <div className="relative">
+            {/* Subtle loading overlay for background refreshes */}
             {isLoading && (
               <div className="absolute top-4 right-4 z-10">
                 <div className="bg-primary/10 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 border border-primary/20">
-                  <Icons.RefreshCw className="w-4 h-4 text-primary animate-spin" />
-                  <span className="text-sm text-primary">Loading...</span>
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  <span className="text-sm text-primary">Syncing...</span>
                 </div>
               </div>
             )}
-            <LeadList
+            <LeadList 
               leads={leads}
               onSelectLead={handleSelectLead}
               onAddLead={handleAddLead}
@@ -424,26 +951,43 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
               }}
               onDeleteLead={async (leadId) => {
                 if (confirm('Are you sure you want to delete this lead?')) {
-                  const success = await deleteLead(leadId);
-                  if (success) {
-                    showSuccessMessage('Lead deleted successfully');
+                  try {
+                    const response = await apiService.deleteLead(leadId);
+                    if (response.success) {
+                      setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
+                      console.log('✅ Lead deleted successfully');
+                    } else {
+                      alert('Failed to delete lead. Please try again.');
+                    }
+                  } catch (error) {
+                    console.error('Error deleting lead:', error);
+                    alert('Failed to delete lead. Please try again.');
                   }
                 }
               }}
               onAssignLead={async (leadId, assignee) => {
-                const result = await updateLead(leadId, { assignedTo: assignee });
-                if (result) {
-                  showSuccessMessage('Lead assigned successfully');
+                try {
+                  const response = await apiService.updateLead(leadId, { assignedTo: assignee });
+                  if (response.success && response.data) {
+                    setLeads(prevLeads => prevLeads.map(lead => 
+                      lead.id === leadId ? response.data.lead : lead
+                    ));
+                    console.log('✅ Lead assigned successfully');
+                  } else {
+                    alert('Failed to assign lead. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error assigning lead:', error);
+                  alert('Failed to assign lead. Please try again.');
                 }
               }}
               onNavigateToChat={handleNavigateToChat}
             />
           </div>
         );
-
       case 'lead-detail':
         return selectedLeadId ? (
-          <LeadDetailView
+          <LeadDetailView 
             leadId={selectedLeadId}
             leads={leads}
             onBack={() => setCurrentView('leads')}
@@ -454,59 +998,102 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
             onConvertToOrder={handleConvertToOrder}
           />
         ) : (
-          <div className="p-6">
-            <h1 className="text-2xl font-semibold mb-4">Lead Not Found</h1>
-            <Button onClick={() => setCurrentView('leads')} variant="outline">
-              ← Back to Leads
-            </Button>
-          </div>
+          <LeadList 
+            leads={leads}
+            onSelectLead={handleSelectLead}
+            onAddLead={handleAddLead}
+            onEditLead={(leadId) => {
+              setSelectedLeadId(leadId);
+              setCurrentView('edit-lead');
+            }}
+            onDeleteLead={async (leadId) => {
+              if (confirm('Are you sure you want to delete this lead?')) {
+                try {
+                  const response = await apiService.deleteLead(leadId);
+                  if (response.success) {
+                    setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
+                  } else {
+                    alert('Failed to delete lead. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error deleting lead:', error);
+                  alert('Failed to delete lead. Please try again.');
+                }
+              }
+            }}
+            onAssignLead={async (leadId, assignee) => {
+              try {
+                const response = await apiService.updateLead(leadId, { assignedTo: assignee });
+                if (response.success && response.data) {
+                  setLeads(prevLeads => prevLeads.map(lead => 
+                    lead.id === leadId ? response.data.lead : lead
+                  ));
+                } else {
+                  alert('Failed to assign lead. Please try again.');
+                }
+              } catch (error) {
+                console.error('Error assigning lead:', error);
+                alert('Failed to assign lead. Please try again.');
+              }
+            }}
+            onNavigateToChat={handleNavigateToChat}
+          />
         );
-
       case 'add-lead':
         return (
-          <AddLeadForm
+          <AddLeadForm 
             onBack={() => setCurrentView('leads')}
             onSubmit={handleAddLeadSubmit}
           />
         );
-
       case 'edit-lead':
         const leadToEdit = selectedLeadId ? leads.find(lead => lead.id === selectedLeadId) : null;
         return leadToEdit ? (
-          <EditLeadForm
+          <EditLeadForm 
             lead={leadToEdit}
             onBack={() => setCurrentView('leads')}
             onSubmit={async (leadData) => {
-              const result = await updateLead(selectedLeadId!, leadData);
-              if (result) {
-                showSuccessMessage('Lead updated successfully');
-                setCurrentView('leads');
+              try {
+                const response = await apiService.updateLead(selectedLeadId!, leadData);
+                if (response.success && response.data) {
+                  setLeads(prevLeads => prevLeads.map(lead => 
+                    lead.id === selectedLeadId ? response.data.lead : lead
+                  ));
+                  setCurrentView('leads');
+                } else {
+                  alert('Failed to update lead. Please try again.');
+                }
+              } catch (error) {
+                console.error('Error updating lead:', error);
+                alert('Failed to update lead. Please try again.');
               }
             }}
           />
         ) : (
           <div className="p-6">
             <h1 className="text-2xl font-semibold mb-4">Lead Not Found</h1>
-            <Button onClick={() => setCurrentView('leads')} variant="outline">
+            <button onClick={() => setCurrentView('leads')} className="text-primary hover:underline">
               ← Back to Leads
-            </Button>
+            </button>
           </div>
         );
 
+      // Order Management
       case 'orders':
       case 'custom-orders':
       case 'repairs':
         return (
           <div className="relative">
+            {/* Subtle loading overlay for background refreshes */}
             {isLoading && (
               <div className="absolute top-4 right-4 z-10">
                 <div className="bg-primary/10 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 border border-primary/20">
-                  <Icons.RefreshCw className="w-4 h-4 text-primary animate-spin" />
-                  <span className="text-sm text-primary">Loading...</span>
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  <span className="text-sm text-primary">Syncing...</span>
                 </div>
               </div>
             )}
-            <OrderList
+            <OrderList 
               orders={orders}
               onSelectOrder={handleSelectOrder}
               onAddOrder={handleAddOrder}
@@ -516,72 +1103,150 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
               }}
               onDeleteOrder={async (orderId) => {
                 if (confirm('Are you sure you want to delete this order?')) {
-                  const success = await deleteOrder(orderId);
-                  if (success) {
-                    showSuccessMessage('Order deleted successfully');
+                  try {
+                    const response = await apiService.deleteOrder(orderId);
+                    if (response.success) {
+                      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+                      console.log('✅ Order deleted successfully');
+                    } else {
+                      alert('Failed to delete order. Please try again.');
+                    }
+                  } catch (error) {
+                    console.error('Error deleting order:', error);
+                    alert('Failed to delete order. Please try again.');
                   }
                 }
               }}
             />
           </div>
         );
-
       case 'order-detail':
         return selectedOrderId ? (
-          <OrderDetailView
+          <OrderDetailView 
             orderId={selectedOrderId}
             orders={orders}
             onBack={() => setCurrentView('orders')}
           />
         ) : (
-          <div className="p-6">
-            <h1 className="text-2xl font-semibold mb-4">Order Not Found</h1>
-            <Button onClick={() => setCurrentView('orders')} variant="outline">
-              ← Back to Orders
-            </Button>
-          </div>
+          <OrderList 
+            orders={orders}
+            onSelectOrder={handleSelectOrder}
+            onAddOrder={handleAddOrder}
+            onEditOrder={(orderId) => {
+              setSelectedOrderId(orderId);
+              setCurrentView('edit-order');
+            }}
+            onDeleteOrder={async (orderId) => {
+              if (confirm('Are you sure you want to delete this order?')) {
+                try {
+                  const response = await apiService.deleteOrder(orderId);
+                  if (response.success) {
+                    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+                  } else {
+                    alert('Failed to delete order. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error deleting order:', error);
+                  alert('Failed to delete order. Please try again.');
+                }
+              }
+            }}
+          />
         );
-
       case 'add-order':
         return (
-          <AddOrderForm
+          <AddOrderForm 
             onBack={() => setCurrentView('orders')}
             onSubmit={handleAddOrderSubmit}
           />
         );
-
       case 'edit-order':
         const orderToEdit = selectedOrderId ? orders.find(order => order.id === selectedOrderId) : null;
         return orderToEdit ? (
-          <EditOrderForm
+          <EditOrderForm 
             order={orderToEdit}
             onBack={() => setCurrentView('orders')}
             onSubmit={async (orderData) => {
-              const result = await updateOrder(selectedOrderId!, orderData);
-              if (result) {
-                showSuccessMessage('Order updated successfully');
-                setCurrentView('orders');
+              try {
+                const response = await apiService.updateOrder(selectedOrderId!, orderData);
+                if (response.success && response.data) {
+                  setOrders(prevOrders => prevOrders.map(order => 
+                    order.id === selectedOrderId ? response.data.order : order
+                  ));
+                  setCurrentView('orders');
+                } else {
+                  alert('Failed to update order. Please try again.');
+                }
+              } catch (error) {
+                console.error('Error updating order:', error);
+                alert('Failed to update order. Please try again.');
               }
             }}
           />
         ) : (
           <div className="p-6">
             <h1 className="text-2xl font-semibold mb-4">Order Not Found</h1>
-            <Button onClick={() => setCurrentView('orders')} variant="outline">
+            <button onClick={() => setCurrentView('orders')} className="text-primary hover:underline">
               ← Back to Orders
-            </Button>
+            </button>
           </div>
         );
 
-      // Other views remain the same...
+      // Inventory Management
       case 'inventory':
         return (
-          <InventoryList
+          <InventoryList 
             onSelectItem={handleSelectItem}
-            onAddItem={() => setCurrentView('add-inventory')}
+            onAddItem={handleAddItem}
           />
         );
+      case 'inventory-detail':
+        return selectedItemId ? (
+          <div className="p-6">
+            <h1 className="text-2xl font-semibold mb-4">Inventory Item Details</h1>
+            <p>Item ID: {selectedItemId}</p>
+            <button onClick={() => setCurrentView('inventory')} className="mt-4 text-primary hover:underline">
+              ← Back to Inventory
+            </button>
+          </div>
+        ) : (
+          <InventoryList 
+            onSelectItem={handleSelectItem}
+            onAddItem={handleAddItem}
+          />
+        );
+      case 'add-inventory':
+        return (
+          <div className="p-6">
+            <h1 className="text-2xl font-semibold mb-4">Add New Inventory Item</h1>
+            <p>Inventory item creation form will be implemented here.</p>
+            <button onClick={() => setCurrentView('inventory')} className="mt-4 text-primary hover:underline">
+              ← Back to Inventory
+            </button>
+          </div>
+        );
+      case 'low-stock':
+        return (
+          <div className="p-6">
+            <h1 className="text-2xl font-semibold mb-4">Low Stock Alert</h1>
+            <p>Items that need restocking will be shown here.</p>
+            <button onClick={() => setCurrentView('inventory')} className="mt-4 text-primary hover:underline">
+              ← Back to Inventory
+            </button>
+          </div>
+        );
+      case 'categories':
+        return (
+          <div className="p-6">
+            <h1 className="text-2xl font-semibold mb-4">Jewelry Categories</h1>
+            <p>Category management interface will be implemented here.</p>
+            <button onClick={() => setCurrentView('inventory')} className="mt-4 text-primary hover:underline">
+              ← Back to Inventory
+            </button>
+          </div>
+        );
 
+      // Dealer Management
       case 'dealers':
         return (
           <DealerList
@@ -592,245 +1257,96 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
             }}
           />
         );
-
       case 'add-dealer':
         return (
           <AddDealerForm
             onBack={() => setCurrentView('dealers')}
-            onDealerAdded={async () => {
-              await refreshData();
+            onDealerAdded={() => {
+              loadDealers();
               setCurrentView('dealers');
             }}
           />
         );
-
-      case 'employees':
-        return (
-          <EmployeeList />
-        );
-
-      case 'add-employee':
-        return (
+      case 'edit-dealer':
+        const dealerToEdit = selectedDealerId ? dealers.find(dealer => dealer.id === selectedDealerId) : null;
+        return dealerToEdit ? (
+          <EditDealerForm
+            dealer={dealerToEdit}
+            onBack={() => setCurrentView('dealers')}
+            onDealerUpdated={() => {
+              loadDealers();
+              setCurrentView('dealers');
+            }}
+          />
+        ) : (
           <div className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentView('employees')}
-                className="p-2"
-              >
-                <Icons.ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-2xl font-semibold">Add Employee</h1>
-            </div>
-            {/* This will be handled by EmployeeList internally */}
-            <EmployeeList />
+            <h1 className="text-2xl font-semibold mb-4">Dealer Not Found</h1>
+            <button onClick={() => setCurrentView('dealers')} className="text-primary hover:underline">
+              ← Back to Dealers
+            </button>
           </div>
         );
 
-      // case 'inventory':
-      //   return (
-      //     <InventoryList />
-      //   );
-
-      case 'add-inventory':
+      // Other sections (placeholders)
+      case 'reports':
         return (
           <div className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentView('inventory')}
-                className="p-2"
-              >
-                <Icons.ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-2xl font-semibold">Add Inventory</h1>
-            </div>
-            {/* This will be handled by InventoryList internally */}
-            <InventoryList />
+            <h1 className="text-2xl font-semibold mb-4">Business Reports</h1>
+            <p>Comprehensive business reporting will be implemented here.</p>
           </div>
         );
-
-      case 'inventory-transactions':
-        return (
-          <div className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentView('inventory')}
-                className="p-2"
-              >
-                <Icons.ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-2xl font-semibold">Inventory Transactions</h1>
-            </div>
-            {/* This will be handled by InventoryList internally */}
-            <InventoryList />
-          </div>
-        );
-
-      case 'transfer-gold':
-        return (
-          <div className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentView('inventory')}
-                className="p-2"
-              >
-                <Icons.ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-2xl font-semibold">Transfer Gold to Dealer</h1>
-            </div>
-            {/* This will be handled by InventoryList internally */}
-            <InventoryList />
-          </div>
-        );
-
       case 'notifications':
         return (
           <div className="p-6">
-            <NotificationScreen
-              onNotificationClick={handleNotificationClick}
-            />
+            <h1 className="text-2xl font-semibold mb-4">Notification Center</h1>
+            <p>View all your notifications in one place.</p>
+            <div className="mt-6">
+              <NotificationSystem 
+                leads={leads} 
+                orders={orders} 
+                onNotificationClick={handleNotificationClick}
+              />
+            </div>
           </div>
         );
-
       case 'profile':
         return (
-          <ProfileManagement
+          <ProfileManagement 
             user={user}
             onUserUpdate={handleUserUpdate}
           />
         );
-
       case 'whatsapp-chat':
         return (
-          <WhatsAppChat
+          <WhatsAppChat 
             onBack={() => {
               setCurrentView('dashboard');
               setSelectedChatContact(null);
-            }}
+            }} 
             selectedContactInfo={selectedChatContact}
           />
         );
-
       case 'instagram-chat':
         return (
-          <InstagramChat
+          <InstagramChat 
             onBack={() => {
               setCurrentView('dashboard');
               setSelectedChatContact(null);
-            }}
+            }} 
             selectedContactInfo={selectedChatContact}
           />
         );
-
       case 'server-diagnostic':
         return (
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-semibold">Server Diagnostics</h1>
-              <Button onClick={() => setCurrentView('dashboard')} variant="outline">
-                ← Back to Dashboard
-              </Button>
-            </div>
-
-            {/* Important Notice */}
-            {error && error.includes('Database tables need to be set up') && (
-              <Alert className="border-orange-200 bg-orange-50">
-                <Icons.AlertTriangle className="h-4 w-4 text-orange-600" />
-                <AlertDescription className="text-orange-800">
-                  <strong>Database Setup Required:</strong> Your database tables are not set up yet.
-                  This system now uses proper Supabase database tables for better data persistence.
-                  <br />
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => setCurrentView('server-diagnostic')}
-                      className="hover:bg-orange-700 text-white bg-black"
-                    >
-                      Set Up Database Now
-                    </Button>
-                    <span className="text-xs text-orange-600 self-center">
-                      This will create the required tables automatically.
-                    </span>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Data Status Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icons.Database className="w-5 h-5 text-primary" />
-                  Current Data Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{leads.length}</div>
-                    <div className="text-sm text-muted-foreground">Leads</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{orders.length}</div>
-                    <div className="text-sm text-muted-foreground">Orders</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{dealers.length}</div>
-                    <div className="text-sm text-muted-foreground">Dealers</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {error ? (
-                      <>
-                        <Icons.WifiOff className="w-4 h-4 text-red-600" />
-                        <span className="text-red-600">Connection Issues</span>
-                      </>
-                    ) : (
-                      <>
-                        <Icons.Wifi className="w-4 h-4 text-green-600" />
-                        <span className="text-green-600">Connected</span>
-                      </>
-                    )}
-                  </div>
-                  <Button
-                    onClick={refreshData}
-                    disabled={isLoading}
-                    size="sm"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Icons.RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Refreshing...
-                      </>
-                    ) : (
-                      <>
-                        <Icons.RefreshCw className="w-4 h-4 mr-2" />
-                        Refresh Data
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <DatabaseSetup />
-
-            <DataSyncHelper
-              currentLeads={leads}
-              currentOrders={orders}
-              onDataUpdate={(newLeads, newOrders) => {
-                // Data will be updated through the context
-                refreshData();
-              }}
-            />
-
-            <ServerDiagnostic />
-          </div>
+          <ServerDiagnostic 
+            currentLeads={leads}
+            currentOrders={orders}
+            onDataUpdate={(newLeads, newOrders) => {
+              setLeads(newLeads);
+              setOrders(newOrders);
+              console.log('✅ Data updated from sync helper');
+            }}
+          />
         );
 
       default:
@@ -842,8 +1358,8 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sticky Sidebar */}
       <div className="sticky top-0 h-screen">
-        <Sidebar
-          user={user}
+        <Sidebar 
+          user={user} 
           onLogout={onLogout}
           currentView={currentView}
           onNavigate={handleNavigate}
@@ -852,24 +1368,92 @@ export function DashboardV2({ user, onLogout, onUserUpdate }: DashboardV2Props) 
           onNotificationClick={handleNotificationClick}
         />
       </div>
-
+      
       {/* Main Content Area - Responsive */}
-      <div className="flex-1 overflow-auto">
-        {/* Success Message */}
+      <div className="flex-1 overflow-auto min-w-0">
+        {/* Success Message Banner */}
         {successMessage && (
-          <div className="fixed top-4 right-4 z-50">
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
-              <Icons.CheckCircle className="w-4 h-4" />
-              {successMessage}
-            </div>
+          <div className="bg-green-50 border-b border-green-200 px-4 py-3">
+            <Alert className="border-green-200 bg-transparent">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <div className="flex items-center justify-between">
+                  <span>{successMessage}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSuccessMessage(null)}
+                    className="text-green-600 hover:bg-green-100 h-6 w-6 p-0"
+                  >
+                    ×
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
           </div>
         )}
 
-        {/* Messaging Integration - Hidden but active */}
-        <MessagingIntegration onIncomingMessage={handleIncomingMessage} />
-
-        {/* Main Content */}
-        {renderMainContent()}
+        {/* Connection Status Banner */}
+        {dataLoadError && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+            <Alert className="border-yellow-200 bg-transparent">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {isConnectedToServer ? (
+                      <Wifi className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <WifiOff className="h-4 w-4 text-red-600" />
+                    )}
+                    <span>
+                      {isConnectedToServer 
+                        ? 'Connected to server - Some data may be cached'
+                        : 'Working offline - Using local demo data'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentView('server-diagnostic')}
+                      className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                    >
+                      Diagnose Issue
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleForceRefresh}
+                      disabled={isLoading}
+                      className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          Refreshing
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Refresh Data
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+        
+        <div className="min-h-full">
+          {renderMainContent()}
+        </div>
+        
+        {/* Messaging Integration - Hidden component that handles incoming messages */}
+        <MessagingIntegration onNewMessage={handleIncomingMessage} />
       </div>
     </div>
   );
