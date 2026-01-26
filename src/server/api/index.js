@@ -1296,6 +1296,24 @@ app.delete('/api/leads/:id', async (c) => {
   }
 });
 
+const generateOrderNumber = async () => {
+  const today = new Date();
+  const datePart = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+
+  // Count today's orders
+  const { count, error } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', `${datePart}T00:00:00`)
+    .lte('created_at', `${datePart}T23:59:59`);
+
+  if (error) throw error;
+
+  const sequence = String((count ?? 0) + 1).padStart(3, '0');
+
+  return `ORD-${datePart}-${sequence}`;
+};
+
 app.post('/api/orders', async (c) => {
   try {
     const user = await verifyAuth(c.req.raw);
@@ -1305,8 +1323,12 @@ app.post('/api/orders', async (c) => {
 
     const orderData = await c.req.json();
 
+    // 🔥 Generate order number
+    const orderNumber = await generateOrderNumber();
+
     const orderToInsert = {
       ...orderData,
+      order_number: orderNumber, // ✅ FIX
       user_id: user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -1320,12 +1342,6 @@ app.post('/api/orders', async (c) => {
 
     if (error) {
       console.error('❌ Database error creating order:', error);
-      if (error.code === '42P01') {
-        return c.json({
-          error: 'Database tables not set up. Please run database setup first.',
-          tableExists: false
-        }, 400);
-      }
       return c.json({ error: 'Failed to create order' }, 500);
     }
 
@@ -1335,6 +1351,7 @@ app.post('/api/orders', async (c) => {
     return c.json({ error: 'Failed to create order' }, 500);
   }
 });
+
 
 app.put('/api/orders/:id', async (c) => {
   try {

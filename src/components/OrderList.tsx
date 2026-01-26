@@ -30,10 +30,11 @@ import { cn } from './ui/utils';
 
 interface Order {
   id: string;
-  orderNumber: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
+  user_id?: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
   status: 'Pending' | 'Confirmed' | 'In Production' | 'Ready' | 'Delivered' | 'Cancelled';
   type: 'Sale' | 'Custom Order' | 'Repair' | 'Appraisal';
   items: Array<{
@@ -42,14 +43,16 @@ interface Order {
     quantity: number;
     price: number;
   }>;
-  totalAmount: number;
-  paidAmount: number;
-  paymentStatus: 'Paid' | 'Partial' | 'Pending' | 'Overdue' | 'Advance Paid';
-  orderDate: string;
-  expectedDelivery: string;
-  assignedTo: string;
+  total_amount: number;
+  paid_amount: number;
+  payment_status: 'Paid' | 'Partial' | 'Pending' | 'Overdue' | 'Advance Paid';
+  order_date: string;
+  expected_delivery: string;
+  assigned_to: string;
   priority: 'High' | 'Medium' | 'Low';
   notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface OrderListProps {
@@ -196,6 +199,54 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
     return colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      alert('No orders to export');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = ['Order Number', 'Customer Name', 'Email', 'Phone', 'Status', 'Type', 'Items', 'Total Amount', 'Paid Amount', 'Payment Status', 'Order Date', 'Expected Delivery', 'Assigned To', 'Priority', 'Notes'];
+    
+    // Map orders to CSV rows
+    const rows = filteredOrders.map(order => [
+      order.order_number,
+      order.customer_name,
+      order.customer_email,
+      order.customer_phone,
+      order.status,
+      order.type,
+      order.items.map(item => `${item.name} (${item.quantity}x)`).join('; '),
+      order.total_amount,
+      order.paid_amount,
+      order.payment_status,
+      formatDate(order.order_date),
+      formatDate(order.expected_delivery),
+      order.assigned_to,
+      order.priority,
+      order.notes || ''
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.map(header => `"${header}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create a Blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getStatusIcon = (status: string) => {
     const icons = {
       'Pending': Clock,
@@ -211,17 +262,17 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
-      const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           order.customer_email.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
       const matchesType = typeFilter === 'all' || order.type === typeFilter;
-      const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
+      const matchesPayment = paymentFilter === 'all' || order.payment_status === paymentFilter;
       const matchesPriority = priorityFilter === 'all' || order.priority === priorityFilter;
-      const matchesAssignee = assigneeFilter === 'all' || order.assignedTo === assigneeFilter;
+      const matchesAssignee = assigneeFilter === 'all' || order.assigned_to === assigneeFilter;
       
-      const orderDate = new Date(order.orderDate);
+      const orderDate = new Date(order.order_date);
       const matchesDateFrom = !dateFrom || orderDate >= dateFrom;
       const matchesDateTo = !dateTo || orderDate <= dateTo;
 
@@ -238,7 +289,7 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
 
   const totalPages = Math.ceil(filteredOrders.length / pageSize);
 
-  const uniqueAssignees = [...new Set(orders.map(order => order.assignedTo))];
+  const uniqueAssignees = [...new Set(orders.map(order => order.assigned_to))];
 
   return (
     <div className="p-6 space-y-6">
@@ -249,7 +300,7 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
           <p className="text-muted-foreground">Track and manage all customer orders</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={exportToCSV}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -449,20 +500,20 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
                   <tr key={order.id} className="border-b hover:bg-muted/50 transition-colors">
                     <td className="p-4">
                       <div>
-                        <div className="font-medium">{order.orderNumber}</div>
-                        <div className="text-sm text-muted-foreground">{formatDate(order.orderDate)}</div>
+                        <div className="font-medium">{order.order_number}</div>
+                        <div className="text-sm text-muted-foreground">{formatDate(order.order_date)}</div>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="bg-gray-200 text-gray-700">
-                            {order.customerName.split(' ').map(n => n[0]).join('')}
+                            {order.customer_name.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{order.customerName}</div>
-                          <div className="text-sm text-muted-foreground">{order.customerEmail}</div>
+                          <div className="font-medium">{order.customer_name}</div>
+                          <div className="text-sm text-muted-foreground">{order.customer_email}</div>
                         </div>
                       </div>
                     </td>
@@ -485,20 +536,20 @@ export function OrderList({ orders, onSelectOrder, onAddOrder, onEditOrder, onDe
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="font-medium">${order.totalAmount.toLocaleString()}</div>
-                      {order.paidAmount < order.totalAmount && (
+                      <div className="font-medium">${order.total_amount.toLocaleString()}</div>
+                      {order.paid_amount < order.total_amount && (
                         <div className="text-sm text-muted-foreground">
-                          Paid: ${order.paidAmount.toLocaleString()}
+                          Paid: ${order.paid_amount.toLocaleString()}
                         </div>
                       )}
                     </td>
                     <td className="p-4">
-                      <Badge className={getPaymentStatusColor(order.paymentStatus)}>
-                        {order.paymentStatus}
+                      <Badge className={getPaymentStatusColor(order.payment_status)}>
+                        {order.payment_status}
                       </Badge>
                     </td>
                     <td className="p-4">
-                      <span className="text-sm">{formatDate(order.expectedDelivery)}</span>
+                      <span className="text-sm">{formatDate(order.expected_delivery)}</span>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">

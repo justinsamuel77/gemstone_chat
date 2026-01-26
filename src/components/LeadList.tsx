@@ -13,11 +13,11 @@ import { openWhatsAppChat, openInstagramChat } from './MessagingIntegration';
 // Helper function for date formatting
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-    day: 'numeric' 
-    });
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 import { cn } from './ui/utils';
 
@@ -57,99 +57,13 @@ interface LeadListProps {
 }
 
 // Mock data for demonstration
-const mockLeads: Lead[5] = [
-  {
-    id: '1',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@email.com',
-    phone: '+91 98765 43210',
-    status: 'New',
-    source: 'Website',
-    assignedTo: 'Jeweler Rajesh',
-    lastContact: '2024-01-15',
-    value: 85000,
-    priority: 'High',
-    createdAt: '2024-01-10',
-    company: 'Looking for engagement ring'
-  },
-  {
-    id: '2',
-    name: 'Rohit Mehta',
-    email: 'rohit.mehta@email.com',
-    phone: '+91 87654 32109',
-    status: 'Contacted',
-    source: 'Referral',
-    assignedTo: 'Sales Manager Kavya',
-    lastContact: '2024-01-14',
-    value: 125000,
-    priority: 'High',
-    createdAt: '2024-01-08',
-    company: 'Wedding jewelry set'
-  },
-  {
-    id: '3',
-    name: 'Anjali Patel',
-    email: 'anjali.patel@email.com',
-    phone: '+91 76543 21098',
-    status: 'Qualified',
-    source: 'Social Media',
-    assignedTo: 'Designer Arjun',
-    lastContact: '2024-01-13',
-    value: 45000,
-    priority: 'Medium',
-    createdAt: '2024-01-05',
-    company: 'Custom necklace design'
-  },
-  {
-    id: '4',
-    name: 'Vikram Singh',
-    email: 'vikram.singh@email.com',
-    phone: '+91 65432 10987',
-    status: 'Proposal',
-    source: 'Walk-in',
-    assignedTo: 'Senior Jeweler Meera',
-    lastContact: '2024-01-12',
-    value: 275000,
-    priority: 'High',
-    createdAt: '2024-01-03',
-    company: 'Luxury diamond bracelet'
-  },
-  {
-    id: '5',
-    name: 'Sneha Reddy',
-    email: 'sneha.reddy@email.com',
-    phone: '+91 54321 09876',
-    status: 'Negotiation',
-    source: 'Instagram',
-    assignedTo: 'Consultant Amit',
-    lastContact: '2024-01-11',
-    value: 65000,
-    priority: 'High',
-    createdAt: '2024-01-01',
-    company: 'Gold earrings collection'
-  },
-  {
-    id: '6',
-    name: 'Rahul Gupta',
-    email: 'rahul.gupta@email.com',
-    phone: '+91 43210 98765',
-    status: 'Closed Won',
-    source: 'Friend Referral',
-    assignedTo: 'Store Manager Priya',
-    lastContact: '2024-01-10',
-    value: 150000,
-    priority: 'Medium',
-    createdAt: '2023-12-28',
-    company: 'Anniversary gift jewelry'
-  }
-];
 
 export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteLead, onAssignLead, onNavigateToChat }: LeadListProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const openWhatsApp = (phoneNumber: string, message: string) => {
     if (!phoneNumber) return;
-    
+
     // Clean phone number (remove spaces, dashes, etc.)
     const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
     const encodedMessage = encodeURIComponent(message);
@@ -160,6 +74,51 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
   const getWhatsAppMessage = (lead: Lead) => {
     return `Hello ${lead.name}! 👋\n\nThank you for your interest in MADHAVAN JEWELLERS. We're here to help you find the perfect piece.\n\nHow can we assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`;
   };
+
+  const exportToCSV = () => {
+    if (filteredLeads.length === 0) {
+      alert('No leads to export');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Priority', 'Assigned To', 'Value', 'Last Contact', 'Created Date'];
+
+    // Map leads to CSV rows
+    const rows = filteredLeads.map(lead => [
+      lead.name,
+      lead.email,
+      lead.phone,
+      lead.company || '',
+      lead.status,
+      lead.source,
+      lead.priority,
+      lead.assignedTo,
+      lead.value,
+      formatDate(lead.lastContact),
+      formatDate(lead.createdAt)
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.map(header => `"${header}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create a Blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -194,20 +153,20 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
       const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+        lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
       const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
       const matchesPriority = priorityFilter === 'all' || lead.priority === priorityFilter;
       const matchesAssignee = assigneeFilter === 'all' || lead.assignedTo === assigneeFilter;
-      
+
       const leadDate = new Date(lead.createdAt);
       const matchesDateFrom = !dateFrom || leadDate >= dateFrom;
       const matchesDateTo = !dateTo || leadDate <= dateTo;
 
-      return matchesSearch && matchesStatus && matchesSource && 
-             matchesPriority && matchesAssignee && matchesDateFrom && matchesDateTo;
+      return matchesSearch && matchesStatus && matchesSource &&
+        matchesPriority && matchesAssignee && matchesDateFrom && matchesDateTo;
     });
   }, [leads, searchTerm, statusFilter, sourceFilter, priorityFilter, assigneeFilter, dateFrom, dateTo]);
 
@@ -230,12 +189,18 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
           <p className="text-muted-foreground">Manage and track your leads</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCSV}
+            className="cursor-pointer"
+          >
             <Icons.Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={onAddLead} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Icons.Plus className="w-4 h-4 mr-2" />
+
+          <Button onClick={onAddLead} className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer">
+            <Icons.Plus className="w-4 h-4 mr-2 cursor-pointer" />
             Add Lead
           </Button>
         </div>
@@ -447,8 +412,8 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         <div>
                           <div className="font-medium">{lead.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {lead.source === 'Instagram' 
-                              ? lead.instagramUsername 
+                            {lead.source === 'Instagram'
+                              ? lead.instagramUsername
                               : lead.email
                             }
                           </div>
@@ -521,7 +486,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                             <Icons.Phone className="w-4 h-4" />
                           </Button>
                         )}
-                        
+
                         {/* Instagram button for Instagram leads */}
                         {lead.source === 'Instagram' && (
                           <Button
@@ -557,7 +522,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                             <Icons.MessageCircle className="w-4 h-4" />
                           </Button>
                         )}
-                        
+
                         <Button
                           variant="ghost"
                           size="sm"
@@ -566,7 +531,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         >
                           <Icons.Eye className="w-4 h-4" />
                         </Button>
-                        
+
                         {/* 3-dot menu with edit, delete, assign options */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -584,19 +549,19 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                               <span className="text-red-600">Delete Lead</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onAssignLead(lead.id, 'Jeweler Rajesh')}
                             >
                               <Icons.UserPlus className="w-4 h-4 mr-2" />
                               Assign to Rajesh
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onAssignLead(lead.id, 'Sales Manager Kavya')}
                             >
                               <Icons.UserPlus className="w-4 h-4 mr-2" />
                               Assign to Kavya
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onAssignLead(lead.id, 'Designer Arjun')}
                             >
                               <Icons.UserPlus className="w-4 h-4 mr-2" />
