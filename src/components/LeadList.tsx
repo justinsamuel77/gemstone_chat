@@ -13,11 +13,11 @@ import { openWhatsAppChat, openInstagramChat } from './MessagingIntegration';
 // Helper function for date formatting
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-    day: 'numeric' 
-    });
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 import { cn } from './ui/utils';
 
@@ -63,7 +63,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
 
   const openWhatsApp = (phoneNumber: string, message: string) => {
     if (!phoneNumber) return;
-    
+
     // Clean phone number (remove spaces, dashes, etc.)
     const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
     const encodedMessage = encodeURIComponent(message);
@@ -83,7 +83,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
 
     // Define CSV headers
     const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Priority', 'Assigned To', 'Value', 'Last Contact', 'Created Date'];
-    
+
     // Map leads to CSV rows
     const rows = filteredLeads.map(lead => [
       lead.name,
@@ -109,11 +109,11 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
+
     link.setAttribute('href', url);
     link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -153,20 +153,20 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
       const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+        lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
       const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
       const matchesPriority = priorityFilter === 'all' || lead.priority === priorityFilter;
       const matchesAssignee = assigneeFilter === 'all' || lead.assignedTo === assigneeFilter;
-      
+
       const leadDate = new Date(lead.createdAt);
       const matchesDateFrom = !dateFrom || leadDate >= dateFrom;
       const matchesDateTo = !dateTo || leadDate <= dateTo;
 
-      return matchesSearch && matchesStatus && matchesSource && 
-             matchesPriority && matchesAssignee && matchesDateFrom && matchesDateTo;
+      return matchesSearch && matchesStatus && matchesSource &&
+        matchesPriority && matchesAssignee && matchesDateFrom && matchesDateTo;
     });
   }, [leads, searchTerm, statusFilter, sourceFilter, priorityFilter, assigneeFilter, dateFrom, dateTo]);
 
@@ -189,12 +189,18 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
           <p className="text-muted-foreground">Manage and track your leads</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={exportToCSV}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCSV}
+            className="cursor-pointer"
+          >
             <Icons.Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={onAddLead} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Icons.Plus className="w-4 h-4 mr-2" />
+
+          <Button onClick={onAddLead} className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer">
+            <Icons.Plus className="w-4 h-4 mr-2 cursor-pointer" />
             Add Lead
           </Button>
         </div>
@@ -406,8 +412,8 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         <div>
                           <div className="font-medium">{lead.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {lead.source === 'Instagram' 
-                              ? lead.instagramUsername 
+                            {lead.source === 'Instagram'
+                              ? lead.instagramUsername
                               : lead.email
                             }
                           </div>
@@ -480,7 +486,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                             <Icons.Phone className="w-4 h-4" />
                           </Button>
                         )}
-                        
+
                         {/* Instagram button for Instagram leads */}
                         {lead.source === 'Instagram' && (
                           <Button
@@ -516,7 +522,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                             <Icons.MessageCircle className="w-4 h-4" />
                           </Button>
                         )}
-                        
+
                         <Button
                           variant="ghost"
                           size="sm"
@@ -525,7 +531,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         >
                           <Icons.Eye className="w-4 h-4" />
                         </Button>
-                        
+
                         {/* 3-dot menu with edit, delete, assign options */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -543,19 +549,19 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                               <span className="text-red-600">Delete Lead</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onAssignLead(lead.id, 'Jeweler Rajesh')}
                             >
                               <Icons.UserPlus className="w-4 h-4 mr-2" />
                               Assign to Rajesh
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onAssignLead(lead.id, 'Sales Manager Kavya')}
                             >
                               <Icons.UserPlus className="w-4 h-4 mr-2" />
                               Assign to Kavya
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onAssignLead(lead.id, 'Designer Arjun')}
                             >
                               <Icons.UserPlus className="w-4 h-4 mr-2" />
