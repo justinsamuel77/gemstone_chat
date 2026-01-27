@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Icons } from './ui/icons';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LeadList } from './LeadList';
+import { apiService } from '../utils/supabase/api';
 
 interface User {
   id: string;
@@ -19,11 +21,255 @@ interface User {
   };
 }
 
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'New' | 'Contacted' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
+  source: string;
+  assignedTo: string;
+  lastContact: string;
+  value: number;
+  priority: 'High' | 'Medium' | 'Low';
+  createdAt: string;
+  company?: string;
+  avatar?: string;
+  dateOfBirth?: string;
+  marriageDate?: string;
+  address?: string;
+  netWeight?: string;
+  estimatedDeliveryDate?: string;
+  notes?: string;
+  productImage?: File | null;
+  instagramUsername?: string;
+}
+
 interface DashboardContentProps {
   user: User;
 }
 
 export function DashboardContent({ user }: DashboardContentProps) {
+  // State management for leads
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isConnectedToServer, setIsConnectedToServer] = useState(false);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+
+  // Initial fallback leads data
+  const initialLeads: Lead[] = [
+    {
+      id: '1',
+      name: 'Priya Sharma',
+      email: 'priya.sharma@email.com',
+      phone: '+91 9876543210',
+      status: 'Qualified',
+      source: 'Website',
+      assignedTo: 'Rajesh Kumar',
+      lastContact: '2024-01-25',
+      value: 85000,
+      priority: 'High',
+      createdAt: '2024-01-15',
+      company: 'Tech Solutions Inc',
+      avatar: 'PS',
+      notes: 'Interested in custom engagement ring'
+    },
+    {
+      id: '2',
+      name: 'Rohit Mehta',
+      email: 'rohit.mehta@email.com',
+      phone: '+91 9876543211',
+      status: 'Proposal',
+      source: 'Referral',
+      assignedTo: 'Vikram Singh',
+      lastContact: '2024-01-24',
+      value: 125000,
+      priority: 'High',
+      createdAt: '2024-01-10',
+      company: 'Finance Corp',
+      avatar: 'RM',
+      notes: 'Wedding jewelry set inquiry'
+    },
+    {
+      id: '3',
+      name: 'Anjali Patel',
+      email: 'anjali.patel@email.com',
+      phone: '+91 9876543212',
+      status: 'Contacted',
+      source: 'Social Media',
+      assignedTo: 'Rajesh Kumar',
+      lastContact: '2024-01-23',
+      value: 15000,
+      priority: 'Medium',
+      createdAt: '2024-01-20',
+      company: 'Design Studio',
+      avatar: 'AP',
+      notes: 'Diamond necklace repair'
+    },
+    {
+      id: '4',
+      name: 'Vikram Singh',
+      email: 'vikram.singh@email.com',
+      phone: '+91 9876543213',
+      status: 'New',
+      source: 'Walk-in',
+      assignedTo: 'Vikram Singh',
+      lastContact: '2024-01-25',
+      value: 45000,
+      priority: 'Medium',
+      createdAt: '2024-01-25',
+      company: 'Consulting Group',
+      avatar: 'VS',
+      notes: 'Gold chain purchase'
+    },
+    {
+      id: '5',
+      name: 'Neha Gupta',
+      email: 'neha.gupta@email.com',
+      phone: '+91 9876543214',
+      status: 'Negotiation',
+      source: 'Instagram',
+      assignedTo: 'Rajesh Kumar',
+      lastContact: '2024-01-24',
+      value: 95000,
+      priority: 'High',
+      createdAt: '2024-01-12',
+      company: 'Fashion Brand',
+      avatar: 'NG',
+      instagramUsername: 'neha.gupta.fashion',
+      notes: 'Custom bracelet design'
+    },
+    {
+      id: '6',
+      name: 'Arjun Desai',
+      email: 'arjun.desai@email.com',
+      phone: '+91 9876543215',
+      status: 'Closed Won',
+      source: 'Advertisement',
+      assignedTo: 'Vikram Singh',
+      lastContact: '2024-01-22',
+      value: 150000,
+      priority: 'High',
+      createdAt: '2023-12-15',
+      company: 'Real Estate Dev',
+      avatar: 'AD',
+      notes: 'Wedding collection purchased'
+    },
+    {
+      id: '7',
+      name: 'Divya Nair',
+      email: 'divya.nair@email.com',
+      phone: '+91 9876543216',
+      status: 'Contacted',
+      source: 'WhatsApp',
+      assignedTo: 'Rajesh Kumar',
+      lastContact: '2024-01-25',
+      value: 35000,
+      priority: 'Low',
+      createdAt: '2024-01-23',
+      company: 'Healthcare',
+      avatar: 'DN',
+      notes: 'Earring inquiry'
+    },
+    {
+      id: '8',
+      name: 'Sanjay Reddy',
+      email: 'sanjay.reddy@email.com',
+      phone: '+91 9876543217',
+      status: 'Closed Lost',
+      source: 'Cold Call',
+      assignedTo: 'Vikram Singh',
+      lastContact: '2024-01-20',
+      value: 25000,
+      priority: 'Low',
+      createdAt: '2024-01-05',
+      company: 'Retail',
+      avatar: 'SR',
+      notes: 'Budget constraints - not interested'
+    }
+  ];
+
+  // Import apiService - adjust the import path based on your project structure
+  // apiService is already imported at the top
+
+  const loadLeads = async () => {
+    console.log('🔄 Starting to load leads...');
+    setIsLoading(true);
+
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const user = localStorage.getItem('user');
+
+      console.log('🔑 Access token exists:', !!accessToken);
+      console.log('👤 User data exists:', !!user);
+
+      if (!accessToken) {
+        console.warn('⚠️ No access token found - using initial leads data');
+        setLeads(initialLeads);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('📡 Making API call to get leads...');
+      const response = await apiService.getLeads();
+      console.log('📥 Leads API response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasLeads: !!(response.data?.leads),
+        leadCount: response.data?.leads?.length || 0,
+        error: response.error
+      });
+
+      if (response.success && response.data && response.data.leads) {
+        console.log(`✅ Successfully loaded ${response.data.leads.length} leads from server`);
+        console.log('🔍 Lead data sample:', response.data.leads[0]);
+
+        // Validate and filter leads data
+        const validLeads = response.data.leads.filter((lead: any) => {
+          const isValid = lead && lead.id && lead.name;
+          if (!isValid) {
+            console.warn('⚠️ Invalid lead data found:', lead);
+          }
+          return isValid;
+        });
+
+        console.log(`📊 Setting ${validLeads.length} valid leads`);
+        setLeads(validLeads);
+        setIsConnectedToServer(true);
+      } else {
+        console.error('❌ Failed to load leads from server:', response.error);
+        console.log('🔄 Falling back to initial leads data');
+        setLeads(initialLeads);
+        setIsConnectedToServer(false);
+
+        // Show user-friendly error
+        if (response.error) {
+          console.warn('API Error Details:', response.error);
+          setDataLoadError(`Failed to load leads: ${response.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('💥 Exception while loading leads:', error);
+      console.log('🔄 Using initial leads data due to exception');
+      setLeads(initialLeads);
+      setIsConnectedToServer(false);
+
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        setDataLoadError(`Connection error: ${error.message}`);
+      }
+    } finally {
+      setIsLoading(false);
+      console.log('✨ Leads loading process completed');
+    }
+  };
+
+  // Load leads on component mount
+  useEffect(() => {
+    loadLeads();
+  }, []);
   const metricCards = [
     {
       title: 'New Customers Today',
@@ -264,9 +510,29 @@ export function DashboardContent({ user }: DashboardContentProps) {
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-3 gap-8">
+        <div className="space-y-8">
+          {dataLoadError && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-red-800">
+                  <Icons.AlertTriangle className="w-4 h-4" />
+                  <p>{dataLoadError}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          <LeadList
+            leads={leads}
+            onSelectLead={(leadId) => console.log('Selected lead:', leadId)}
+            onAddLead={() => console.log('Add lead clicked')}
+            onEditLead={(leadId) => console.log('Edit lead:', leadId)}
+            onDeleteLead={(leadId) => console.log('Delete lead:', leadId)}
+            onAssignLead={(leadId, assignee) => console.log('Assign lead:', leadId, 'to', assignee)}
+            onNavigateToChat={(platform, contactInfo) => console.log('Navigate to chat:', platform, contactInfo)}
+            from={"dashboard"}
+          />
           {/* Recent Customers */}
-          <Card className="border-0 shadow-sm">
+          {/* <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold">Recent Customers</h3>
@@ -325,10 +591,10 @@ export function DashboardContent({ user }: DashboardContentProps) {
                 View all customers →
               </button>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Weekly Sales Chart */}
-          <Card className="border-0 shadow-sm">
+          {/* <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-6">Weekly Sales by Category</h3>
               <div className="h-64">
@@ -349,10 +615,10 @@ export function DashboardContent({ user }: DashboardContentProps) {
                 </ResponsiveContainer>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Category Distribution */}
-          <Card className="border-0 shadow-sm">
+          {/* <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-6">Sales Distribution</h3>
               <div className="h-64 flex items-center justify-center">
@@ -389,7 +655,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
                 ))}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>
