@@ -10,9 +10,36 @@ import { Icons } from './ui/icons';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { generateInvoicePDF } from '../utils/pdf/generator';
 
+interface Order {
+  id: string;
+  user_id?: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  status: 'Pending' | 'Confirmed' | 'In Production' | 'Ready' | 'Delivered' | 'Cancelled';
+  type: 'Sale' | 'Custom Order' | 'Repair' | 'Appraisal';
+  items: Array<{
+    name: string;
+    category: string;
+    quantity: number;
+    price: number;
+  }>;
+  total_amount: number;
+  paid_amount: number;
+  payment_status: 'Paid' | 'Partial' | 'Pending' | 'Overdue' | 'Advance Paid';
+  order_date: string;
+  expected_delivery: string;
+  assigned_to: string;
+  priority: 'High' | 'Medium' | 'Low';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface OrderDetailViewProps {
   orderId: string;
-  orders: any[];
+  orders: Order[];
   onBack: () => void;
 }
 
@@ -22,6 +49,7 @@ export function OrderDetailView({ orderId, orders, onBack }: OrderDetailViewProp
 
   // Find the order from the orders array
   const order = orders.find(o => o.id === orderId);
+  console.log('OrderDetailView - order:', order);
 
   if (!order) {
     return (
@@ -39,11 +67,11 @@ export function OrderDetailView({ orderId, orders, onBack }: OrderDetailViewProp
   // Mock detailed order data based on the order
   const orderDetail = {
     id: order.id,
-    orderNumber: order.orderNumber,
+    order_number: order.order_number,
     customer: {
-      name: order.customerName,
-      email: order.customerEmail,
-      phone: order.customerPhone,
+      name: order.customer_name,
+      email: order.customer_email,
+      phone: order.customer_phone,
       avatar: '',
       personalDetails: {
         birthDate: '09/10/2003',
@@ -53,17 +81,17 @@ export function OrderDetailView({ orderId, orders, onBack }: OrderDetailViewProp
         address: '123 MG Road, Mumbai, Maharashtra'
       }
     },
-    orderStatus: order.status,
-    paymentStatus: order.paymentStatus,
-    dealer: order.assignedTo,
+    status: order.status,
+    payment_status: order.payment_status,
+    assigned_to: order.assigned_to,
     product: {
       name: order.items[0]?.name || 'Jewelry Item',
       metalType: '22K Gold',
       netWeight: '48.3 grams',
       stones: 'Uncut Diamond, Emerald',
       purity: '916 Hallmark',
-      makingCharges: `₹${(order.totalAmount * 0.1).toLocaleString()}`,
-      totalCharges: `₹${order.totalAmount.toLocaleString()}`,
+      makingCharges: `₹${(order.total_amount * 0.1).toLocaleString()}`,
+      totalCharges: `₹${order.total_amount.toLocaleString()}`,
       notes: order.notes || 'Customer requested antique finish and adjustable lock.'
     },
     attachments: [
@@ -71,18 +99,17 @@ export function OrderDetailView({ orderId, orders, onBack }: OrderDetailViewProp
       { id: '2', url: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=300&h=300&fit=crop', alt: 'Product sample 2' }
     ],
     payment: {
-      totalOrderValue: `₹${order.totalAmount.toLocaleString()}`,
-      advancePaid: `₹${order.paidAmount.toLocaleString()}`,
-      kediumCharges: `₹${order.paidAmount.toLocaleString()}`,
-      balanceDue: `₹${(order.totalAmount - order.paidAmount).toLocaleString()}`,
+      total_order_value: `₹${order.total_amount.toLocaleString()}`,
+      advance_paid: `₹${order.paid_amount.toLocaleString()}`,
+      balance_due: `₹${(order.total_amount - order.paid_amount).toLocaleString()}`,
       paymentMethod: 'UPI / Bank Transfer / Cash'
     },
     timeline: [
-      { date: order.orderDate, status: 'Order Placed', completed: true },
-      { date: order.orderDate, status: 'Payment Received', completed: order.paidAmount > 0 },
+      { date: order.order_date, status: 'Order Placed', completed: true },
+      { date: order.order_date, status: 'Payment Received', completed: order.paid_amount > 0 },
       { date: '2024-01-12', status: 'In Production', completed: ['In Production', 'Ready', 'Delivered'].includes(order.status) },
       { date: '2024-01-20', status: 'Quality Check', completed: ['Ready', 'Delivered'].includes(order.status) },
-      { date: order.expectedDelivery, status: 'Ready for Delivery', completed: order.status === 'Delivered' },
+      { date: order.expected_delivery, status: 'Ready for Delivery', completed: order.status === 'Delivered' },
     ]
   };
 
@@ -159,14 +186,14 @@ Dear ${orderDetail.customer.name},
 
 Your jewelry order is progressing well! Here are the latest details:
 
-🔹 Status: ${orderDetail.orderStatus}
-🔹 Payment: ${orderDetail.paymentStatus}
+🔹 Status: ${orderDetail.status}
+🔹 Payment: ${orderDetail.payment_status}
 🔹 Expected Delivery: ${orderDetail.timeline[orderDetail.timeline.length - 1].date}
 
 💰 Payment Summary:
-• Total: ${orderDetail.payment.totalOrderValue}
-• Paid: ${orderDetail.payment.advancePaid}
-• Balance: ${orderDetail.payment.balanceDue}
+• Total: ${orderDetail.payment.total_order_value}
+• Paid: ${orderDetail.payment.advance_paid}
+• Balance: ${orderDetail.payment.balance_due}
 
 We'll attach the detailed report for your reference. Thank you for choosing MADHAVAN JEWELLERS!
 
@@ -203,10 +230,10 @@ MADHAVAN JEWELLERS Team`;
               <Separator orientation="vertical" className="h-6" />
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-semibold text-gray-900">Order #{orderDetail.orderNumber}</h1>
-                  <Badge className={`${getStatusColor(orderDetail.orderStatus)} border`}>
-                    {getStatusIcon(orderDetail.orderStatus)}
-                    <span className="ml-1">{orderDetail.orderStatus}</span>
+                  <h1 className="text-2xl font-semibold text-gray-900">Order #{orderDetail.order_number}</h1>
+                  <Badge className={`${getStatusColor(orderDetail.status)} border`}>
+                    {getStatusIcon(orderDetail.status)}
+                    <span className="ml-1">{orderDetail.status}</span>
                   </Badge>
                 </div>
                 <p className="text-gray-600 mt-1">Complete order management and tracking</p>
@@ -263,7 +290,7 @@ MADHAVAN JEWELLERS Team`;
                       <>
                         <Button 
                           size="sm" 
-                          onClick={() => openWhatsApp(orderDetail.customer.phone, `Hello ${orderDetail.customer.name}! 👋\n\nThis is regarding your jewelry order #${orderDetail.orderNumber}.\n\nHow can I assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`)}
+                          onClick={() => openWhatsApp(orderDetail.customer.phone, `Hello ${orderDetail.customer.name}! 👋\n\nThis is regarding your jewelry order #${orderDetail.order_number}.\n\nHow can I assist you today?\n\nBest regards,\nGEMSTONE Fine Jewelry`)}
                           className="bg-green-600 hover:bg-green-700 text-white"
                         >
                           <Icons.MessageSquare className="w-4 h-4 mr-2" />
@@ -380,7 +407,7 @@ MADHAVAN JEWELLERS Team`;
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Assigned To:</span>
-                          <span className="font-medium text-gray-900">{orderDetail.dealer}</span>
+                          <span className="font-medium text-gray-900">{orderDetail.assigned_to}</span>
                         </div>
                       </div>
                       <div className="space-y-3">
@@ -499,9 +526,9 @@ MADHAVAN JEWELLERS Team`;
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg text-gray-900">Payment Details</CardTitle>
-                  <Badge className={`${getPaymentStatusColor(orderDetail.paymentStatus)} border`}>
+                  <Badge className={`${getPaymentStatusColor(orderDetail.payment_status)} border`}>
                     💳
-                    <span className="ml-1">{orderDetail.paymentStatus}</span>
+                    <span className="ml-1">{orderDetail.payment_status}</span>
                   </Badge>
                 </div>
               </CardHeader>
@@ -509,15 +536,15 @@ MADHAVAN JEWELLERS Team`;
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Total Order Value:</span>
-                    <span className="font-semibold text-gray-900">{orderDetail.payment.totalOrderValue}</span>
+                    <span className="font-semibold text-gray-900">{orderDetail.payment.total_order_value}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Advance Paid:</span>
-                    <span className="font-medium text-green-600">{orderDetail.payment.advancePaid}</span>
+                    <span className="font-medium text-green-600">{orderDetail.payment.advance_paid}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Balance Due:</span>
-                    <span className="font-semibold text-red-600">{orderDetail.payment.balanceDue}</span>
+                    <span className="font-semibold text-red-600">{orderDetail.payment.balance_due}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center">
@@ -544,7 +571,7 @@ MADHAVAN JEWELLERS Team`;
                   </Button>
                 )}
                 <Button 
-                  onClick={() => orderDetail.customer.phone && openWhatsApp(orderDetail.customer.phone, `Hello ${orderDetail.customer.name}! 👋\n\nYour order #${orderDetail.orderNumber} status has been updated to: ${orderDetail.orderStatus}\n\nWe'll keep you posted on any further progress.\n\nThank you for choosing MADHAVAN JEWELLERS!`)}
+                    onClick={() => orderDetail.customer.phone && openWhatsApp(orderDetail.customer.phone, `Hello ${orderDetail.customer.name}! 👋\n\nYour order #${orderDetail.order_number} status has been updated to: ${orderDetail.status}\n\nWe'll keep you posted on any further progress.\n\nThank you for choosing MADHAVAN JEWELLERS!`)}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={!orderDetail.customer.phone}
                 >
