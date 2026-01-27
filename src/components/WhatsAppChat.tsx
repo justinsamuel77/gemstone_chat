@@ -58,6 +58,38 @@ export function WhatsAppChat({ onBack }: WhatsAppChatProps) {
   const getInitials = (name: string) =>
     name.split(' ').map(n => n[0]).join('').toUpperCase();
 
+  const formatLastMessageTime = (iso: string) => {
+    if (!iso) return '';
+
+    const date = new Date(iso);
+    const now = new Date();
+
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) {
+      return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+
+    if (isYesterday) {
+      return 'Yesterday';
+    }
+
+    return date.toLocaleDateString('en-IN'); // dd/mm/yyyy
+  };
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -191,7 +223,7 @@ export function WhatsAppChat({ onBack }: WhatsAppChatProps) {
                       {contact.recipient_name || contact.recipient_number}
                     </h3>
                     <span className="text-xs text-gray-500">
-                      {formatTime(contact.message_history.at(-1)?.time || '')}
+                      {formatLastMessageTime(contact.message_history.at(-1)?.time || '')}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 truncate">

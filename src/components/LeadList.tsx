@@ -54,11 +54,12 @@ interface LeadListProps {
   onDeleteLead: (leadId: string) => void;
   onAssignLead: (leadId: string, assignee: string) => void;
   onNavigateToChat?: (platform: 'whatsapp' | 'instagram', contactInfo: any) => void;
+  from?: 'dashboard' | 'leadsPage' | '';
 }
 
 // Mock data for demonstration
 
-export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteLead, onAssignLead, onNavigateToChat }: LeadListProps) {
+export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteLead, onAssignLead, onNavigateToChat, from }: LeadListProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const openWhatsApp = (phoneNumber: string, message: string) => {
@@ -172,6 +173,7 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
 
   const paginatedLeads = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
+    console.log(filteredLeads, 'filteredLeadsfilteredLeads')
     return filteredLeads.slice(startIndex, startIndex + pageSize);
   }, [filteredLeads, currentPage, pageSize]);
 
@@ -188,22 +190,25 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
           <h1 className="text-2xl font-semibold">Lead Management</h1>
           <p className="text-muted-foreground">Manage and track your leads</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportToCSV}
-            className="cursor-pointer"
-          >
-            <Icons.Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
+        {
+          from === 'dashboard' ? null : (
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToCSV}
+                className="cursor-pointer"
+              >
+                <Icons.Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
 
-          <Button onClick={onAddLead} className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer">
-            <Icons.Plus className="w-4 h-4 mr-2 cursor-pointer" />
-            Add Lead
-          </Button>
-        </div>
+              <Button onClick={onAddLead} className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer">
+                <Icons.Plus className="w-4 h-4 mr-2 cursor-pointer" />
+                Add Lead
+              </Button>
+            </div>)
+        }
       </div>
 
       {/* Filters */}
@@ -392,10 +397,18 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                   <th className="text-left p-4 font-medium">Status</th>
                   <th className="text-left p-4 font-medium">Source</th>
                   <th className="text-left p-4 font-medium">Priority</th>
-                  <th className="text-left p-4 font-medium">Assigned To</th>
+                  {
+                    from === 'dashboard' ? null : (
+                      <th className="text-left p-4 font-medium">Assigned To</th>
+                    )
+                  }
                   <th className="text-left p-4 font-medium">Value</th>
                   <th className="text-left p-4 font-medium">Last Contact</th>
-                  <th className="text-left p-4 font-medium">Actions</th>
+                  {
+                    from === 'dashboard' ? null : (
+                      <th className="text-left p-4 font-medium">Actions</th>
+                    )
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -436,141 +449,149 @@ export function LeadList({ leads, onSelectLead, onAddLead, onEditLead, onDeleteL
                         {lead.priority}
                       </Badge>
                     </td>
-                    <td className="p-4">
-                      <span className="text-sm">{lead.assignedTo}</span>
-                    </td>
+                    {
+                      from === 'dashboard' ? null : (
+                        <td className="p-4">
+                          <span className="text-sm">{lead.assignedTo}</span>
+                        </td>
+                      )
+                    }
                     <td className="p-4">
                       <span className="font-medium">${lead.value.toLocaleString()}</span>
                     </td>
                     <td className="p-4">
-                      <span className="text-sm">{formatDate(lead.lastContact)}</span>
+                      <span className="text-sm">{formatDate(lead.createdAt)}</span>
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        {/* WhatsApp button for any lead with phone number */}
-                        {lead.phone && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // Prefer internal app chat navigation when available (keeps user inside platform)
-                              if (onNavigateToChat) {
-                                onNavigateToChat('whatsapp', {
+                    {
+                      from === 'dashboard' ? null : (
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            {/* WhatsApp button for any lead with phone number */}
+                            {lead.phone && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  // Prefer internal app chat navigation when available (keeps user inside platform)
+                                  if (onNavigateToChat) {
+                                    onNavigateToChat('whatsapp', {
+                                      id: lead.id,
+                                      name: lead.name,
+                                      phone: lead.phone,
+                                      avatar: lead.avatar,
+                                    });
+                                    return;
+                                  }
+
+                                  // Fallback to opening external WhatsApp if no internal handler provided
+                                  openWhatsApp(lead.phone, getWhatsAppMessage(lead));
+                                }}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Open WhatsApp Chat"
+                              >
+                                <Icons.MessageSquare className="w-4 h-4" />
+                              </Button>
+                            )}
+
+                            {/* Call button for any lead with phone number */}
+                            {lead.phone && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open(`tel:${lead.phone}`)}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                title="Call Lead"
+                              >
+                                <Icons.Phone className="w-4 h-4" />
+                              </Button>
+                            )}
+
+                            {/* Instagram button for Instagram leads */}
+                            {lead.source === 'Instagram' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onNavigateToChat?.('instagram', {
+                                  id: lead.id,
+                                  username: lead.instagramUsername,
+                                  fullName: lead.name,
+                                  avatar: lead.avatar
+                                })}
+                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                title="Open Instagram Chat"
+                              >
+                                <Icons.Instagram className="w-4 h-4" />
+                              </Button>
+                            )}
+
+                            {/* Built-in WhatsApp chat for WhatsApp leads */}
+                            {lead.source === 'WhatsApp' && lead.phone && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onNavigateToChat?.('whatsapp', {
                                   id: lead.id,
                                   name: lead.name,
                                   phone: lead.phone,
-                                  avatar: lead.avatar,
-                                });
-                                return;
-                              }
+                                  avatar: lead.avatar
+                                })}
+                                className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                                title="Open Internal WhatsApp Chat"
+                              >
+                                <Icons.MessageCircle className="w-4 h-4" />
+                              </Button>
+                            )}
 
-                              // Fallback to opening external WhatsApp if no internal handler provided
-                              openWhatsApp(lead.phone, getWhatsAppMessage(lead));
-                            }}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            title="Open WhatsApp Chat"
-                          >
-                            <Icons.MessageSquare className="w-4 h-4" />
-                          </Button>
-                        )}
-
-                        {/* Call button for any lead with phone number */}
-                        {lead.phone && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(`tel:${lead.phone}`)}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            title="Call Lead"
-                          >
-                            <Icons.Phone className="w-4 h-4" />
-                          </Button>
-                        )}
-
-                        {/* Instagram button for Instagram leads */}
-                        {lead.source === 'Instagram' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onNavigateToChat?.('instagram', {
-                              id: lead.id,
-                              username: lead.instagramUsername,
-                              fullName: lead.name,
-                              avatar: lead.avatar
-                            })}
-                            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                            title="Open Instagram Chat"
-                          >
-                            <Icons.Instagram className="w-4 h-4" />
-                          </Button>
-                        )}
-
-                        {/* Built-in WhatsApp chat for WhatsApp leads */}
-                        {lead.source === 'WhatsApp' && lead.phone && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onNavigateToChat?.('whatsapp', {
-                              id: lead.id,
-                              name: lead.name,
-                              phone: lead.phone,
-                              avatar: lead.avatar
-                            })}
-                            className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                            title="Open Internal WhatsApp Chat"
-                          >
-                            <Icons.MessageCircle className="w-4 h-4" />
-                          </Button>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onSelectLead(lead.id)}
-                          title="View Lead Details"
-                        >
-                          <Icons.Eye className="w-4 h-4" />
-                        </Button>
-
-                        {/* 3-dot menu with edit, delete, assign options */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Icons.MoreHorizontal className="w-4 h-4" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onSelectLead(lead.id)}
+                              title="View Lead Details"
+                            >
+                              <Icons.Eye className="w-4 h-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => onEditLead(lead.id)}>
-                              <Icons.Edit className="w-4 h-4 mr-2" />
-                              Edit Lead
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDeleteLead(lead.id)}>
-                              <Icons.Trash2 className="w-4 h-4 mr-2 text-red-600" />
-                              <span className="text-red-600">Delete Lead</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => onAssignLead(lead.id, 'Jeweler Rajesh')}
-                            >
-                              <Icons.UserPlus className="w-4 h-4 mr-2" />
-                              Assign to Rajesh
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => onAssignLead(lead.id, 'Sales Manager Kavya')}
-                            >
-                              <Icons.UserPlus className="w-4 h-4 mr-2" />
-                              Assign to Kavya
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => onAssignLead(lead.id, 'Designer Arjun')}
-                            >
-                              <Icons.UserPlus className="w-4 h-4 mr-2" />
-                              Assign to Arjun
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
+
+                            {/* 3-dot menu with edit, delete, assign options */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Icons.MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => onEditLead(lead.id)}>
+                                  <Icons.Edit className="w-4 h-4 mr-2" />
+                                  Edit Lead
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onDeleteLead(lead.id)}>
+                                  <Icons.Trash2 className="w-4 h-4 mr-2 text-red-600" />
+                                  <span className="text-red-600">Delete Lead</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => onAssignLead(lead.id, 'Jeweler Rajesh')}
+                                >
+                                  <Icons.UserPlus className="w-4 h-4 mr-2" />
+                                  Assign to Rajesh
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => onAssignLead(lead.id, 'Sales Manager Kavya')}
+                                >
+                                  <Icons.UserPlus className="w-4 h-4 mr-2" />
+                                  Assign to Kavya
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => onAssignLead(lead.id, 'Designer Arjun')}
+                                >
+                                  <Icons.UserPlus className="w-4 h-4 mr-2" />
+                                  Assign to Arjun
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </td>
+                      )
+                    }
                   </tr>
                 ))}
               </tbody>

@@ -74,16 +74,17 @@ interface InstagramChatProps {
 export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProps) {
 
   const fileInputRef = useRef(null);
-  
+
   const handleFileClick = () => {
-      fileInputRef.current?.click();
-    }
+    fileInputRef.current?.click();
+  }
 
   const [selectedContact, setSelectedContact] = useState<InstagramChat | null>(null);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<InstagramMessage[]>([]);
   const [images, set_images] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false)
@@ -239,22 +240,22 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
   const handleSendMessage = async ({ psid, imagesOverride, overrideMessage }: { psid: number | undefined; imagesOverride?: any[]; overrideMessage?: string }) => {
     if (!psid || !selectedContact) return;
     const textToSend = overrideMessage ?? message;
-    if ((!textToSend.trim() && !(imagesOverride && imagesOverride.length)) ) return;
+    if ((!textToSend.trim() && !(imagesOverride && imagesOverride.length))) return;
     setLoading(true);
 
     const imagesBase64 = imagesOverride
       ? imagesOverride
       : await Promise.all(
-          images.map(async (url) => {
-            const blob = await fetch(url).then((res) => res.blob());
-            const base64 = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.readAsDataURL(blob);
-            });
-            return base64;
-          })
-        );
+        images.map(async (url) => {
+          const blob = await fetch(url).then((res) => res.blob());
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          return base64;
+        })
+      );
 
     try {
       const Message = {
@@ -298,22 +299,22 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     }
   };
 
-    // Simulate typing and response
-    // setTimeout(() => {
-    //   setIsTyping(true);
-    // }, 2000);
+  // Simulate typing and response
+  // setTimeout(() => {
+  //   setIsTyping(true);
+  // }, 2000);
 
-    // setTimeout(() => {
-    //   setIsTyping(false);
-    //   const responseMessage: InstagramMessage = {
-    //     id: (Date.now() + 1).toString(),
-    //     text: 'Thanks for your message! Let me check that for you. 😊',
-    //     timestamp: new Date(),
-    //     isFromMe: false,
-    //     type: 'text'
-    //   };
-    //   setMessages(prev => [...prev, responseMessage]);
-    // }, 4000);
+  // setTimeout(() => {
+  //   setIsTyping(false);
+  //   const responseMessage: InstagramMessage = {
+  //     id: (Date.now() + 1).toString(),
+  //     text: 'Thanks for your message! Let me check that for you. 😊',
+  //     timestamp: new Date(),
+  //     isFromMe: false,
+  //     type: 'text'
+  //   };
+  //   setMessages(prev => [...prev, responseMessage]);
+  // }, 4000);
 
 
   // const handleLikeMessage = (messageId: string) => {
@@ -400,9 +401,9 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
     });
   };
 
-  const filteredContacts = contacts.filter(contact =>
-    contact.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredContacts = instagrammessage.filter(contact =>
+    contact.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    contact.psid?.toString().includes(searchTerm.toLowerCase())
   );
 
   console.log('selected contact', selectedContact)
@@ -445,30 +446,30 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
       }, 100);
     }
   };
-  
-    const handleRemoveImage = (imageUrl: string) => {
-   
-        set_images((prevImages) =>
-          prevImages.filter((image) => image !== imageUrl)
-        );
-        
-        URL.revokeObjectURL(imageUrl);
-    };
 
-    // detect loading transition from true -> false to send pending text (if any)
-    const prevLoadingRef = useRef<boolean>(false);
-    useEffect(() => {
-      if (prevLoadingRef.current && !loading) {
-        // upload just finished
-        if (pendingText && selectedContact) {
-          const text = pendingText;
-          setPendingText(null);
-          // send the pending text now
-          handleSendMessage({ psid: selectedContact.psid, overrideMessage: text });
-        }
+  const handleRemoveImage = (imageUrl: string) => {
+
+    set_images((prevImages) =>
+      prevImages.filter((image) => image !== imageUrl)
+    );
+
+    URL.revokeObjectURL(imageUrl);
+  };
+
+  // detect loading transition from true -> false to send pending text (if any)
+  const prevLoadingRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      // upload just finished
+      if (pendingText && selectedContact) {
+        const text = pendingText;
+        setPendingText(null);
+        // send the pending text now
+        handleSendMessage({ psid: selectedContact.psid, overrideMessage: text });
       }
-      prevLoadingRef.current = loading;
-    }, [loading, pendingText, selectedContact]);
+    }
+    prevLoadingRef.current = loading;
+  }, [loading, pendingText, selectedContact]);
 
 
   return (
@@ -495,7 +496,7 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
           </div>
 
           {/* Search */}
-          {/* <div className="relative">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search"
@@ -503,13 +504,13 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-gray-100 border-0 rounded-lg"
             />
-          </div> */}
+          </div>
         </div>
 
         {/* Contacts List */}
         <ScrollArea className="flex-1">
           <div className="space-y-0">
-            {instagrammessage.map((contact) => (
+            {filteredContacts.map((contact) => (
               <div
                 key={contact.id}
                 onClick={() => setSelectedContact(contact)}
@@ -633,17 +634,18 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                       // onDoubleClick={() => handleLikeMessage(msg.id)}
                       >
                         {msg.images && msg.images.length > 0 && (
-                        <div className="gap-2 mt-2">
-                          {msg.images.map((img, i) => (
-                            <img
-                              key={i}
-                              src={img}
-                              alt={`attachment-${i}`}
-                              className="w-24 h-24 object-cover rounded-md border"
-                            />
-                          ))}
-                        </div>
-                      )}
+                          <div className="gap-2 mt-2">
+                            {msg.images.map((img, i) => (
+                              <img
+                                key={i}
+                                src={img}
+                                alt={`attachment-${i}`}
+                                onClick={() => setSelectedImage(img)}
+                                className="w-24 h-24 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                              />
+                            ))}
+                          </div>
+                        )}
                         <p className="text-sm">{msg?.message}</p>
                         <span className="text-xs text-gray-500">
                           {formatLastSeen(msg.time)}
@@ -667,29 +669,30 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
                 ))}
 
                 {(images && images.length > 0) && (
-                <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative flex-shrink-0">
-                      <img
-                        src={image}
-                        alt={`Uploaded ${index}`}
-                        className="w-24 h-24 object-center rounded-md border p-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(image)}
-                        className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full text-sm w-6 h-6 flex justify-center items-center shadow-md"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      {loading && (
-                        <div className="absolute inset-0 bg-black/40 flex justify-center items-center rounded-md">
-                          <Loader2 className="w-6 h-6 text-white animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                  <div className="flex overflow-x-auto space-x-4 p-4 scrollbar-thin scrollbar-thumb-gray-400 h-32 border border-black">
+                    {images.map((image, index) => (
+                      <div key={index} className="relative flex-shrink-0">
+                        <img
+                          src={image}
+                          alt={`Uploaded ${index}`}
+                          onClick={() => setSelectedImage(image)}
+                          className="w-24 h-24 object-center rounded-md border p-1 cursor-pointer hover:opacity-80 transition-opacity"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(image)}
+                          className="absolute -top-2 -right-2 text-red-500 bg-white rounded-full text-sm w-6 h-6 flex justify-center items-center shadow-md"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        {loading && (
+                          <div className="absolute inset-0 bg-black/40 flex justify-center items-center rounded-md">
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
 
                 {/* Typing Indicator */}
@@ -789,6 +792,40 @@ export function InstagramChat({ onBack, selectedContactInfo }: InstagramChatProp
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Exit Button */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 transition-all duration-200"
+              title="Close image"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Image */}
+            <img
+              src={selectedImage}
+              alt="Full view"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+
+            {/* Close on Escape key */}
+            {typeof document !== 'undefined' && document.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape') setSelectedImage(null);
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
